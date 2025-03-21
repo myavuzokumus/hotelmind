@@ -134,7 +134,7 @@ class SensorChart extends StatelessWidget {
             dotData: FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
             ),
           ),
         ],
