@@ -1,46 +1,74 @@
-import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'package:amplify_api/amplify_api.dart';
+
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 
 class AuthService {
   // QR kodu doğrula
   Future<bool> verifyQRCode(String qrData) async {
     try {
-      // QR verilerini ayrıştır
-      final decodedData = _parseQRData(qrData);
+      print("Alınan QR veri: $qrData");
 
-      if (decodedData == null) {
+      // QR veriyi parse et
+      Map<String, dynamic>? qrJson;
+      try {
+        qrJson = json.decode(qrData);
+      } catch (e) {
+        print("QR kod JSON formatında değil, basit format olabilir: $e");
+        // Alternatif format denemesi gerekebilir
+      }
+
+      if (qrJson == null) {
+        print("QR kod verileri ayrıştırılamadı");
         return false;
       }
 
-      // QR kod doğrulama API'sini çağır
+      // Gerekli alanları kontrol et
+      final roomId = qrJson['roomId'];
+      final timestamp = qrJson['timestamp'];
+      final expiry = qrJson['expiry'];
+      final sessionId = qrJson['sessionId'];
+      final signature = qrJson['signature'];
+
+      if (roomId == null || timestamp == null || expiry == null ||
+          sessionId == null || signature == null) {
+        print("QR kod eksik alanlar içeriyor");
+        return false;
+      }
+
+      // Geçerlilik süresi kontrolü
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      if (now > expiry) {
+        print("QR kodun süresi dolmuş");
+        return false;
+      }
+
+      // Doğrulama için AWS'ye gönder
       final restOperation = Amplify.API.post(
           '/verify-qr',
           body: HttpPayload.json({
             'qrCode': qrData,
-            'roomId': decodedData['roomId'],
-            'timestamp': decodedData['timestamp'],
-            'signature': decodedData['signature']
           })
       );
 
       final response = await restOperation.response;
 
       if (response.statusCode == 200) {
-        // Stream'den gelen tüm byte'ları topla
-        final bodyBytes = await response.body.toList().then((chunks) =>
-            chunks.expand((chunk) => chunk).toList());
+        final responseBytes = await response.body.toList();
+        final responseString = utf8.decode(responseBytes.expand((i) => i).toList());
+        final responseData = json.decode(responseString);
 
-        // Byte listesini String'e dönüştür ve JSON olarak çöz
-        final data = json.decode(utf8.decode(bodyBytes));
+        if (responseData['isValid'] == true) {
+          print("QR kod doğrulandı: $responseData");
 
-        if (data['isValid'] == true) {
-          // Başarılı doğrulamadan sonra kullanıcı oturumunu başlat
-          await _signIn(decodedData['roomId']);
+          // Yerel kullanıcı oturumu başlat
+          await _createLocalSession(roomId, expiry);
           return true;
+        } else {
+          print("QR kod geçersiz: ${responseData['message']}");
         }
+      } else {
+        print("API yanıt hatası: ${response.statusCode}");
       }
 
       return false;
@@ -50,57 +78,24 @@ class AuthService {
     }
   }
 
-  // QR kod verilerini ayrıştır
-  Map<String, dynamic>? _parseQRData(String qrData) {
+  // Yerel oturum başlat
+  Future<void> _createLocalSession(String roomId, int expiryTime) async {
     try {
-      if (qrData.startsWith('{')) {
-        // JSON formatı
-        return json.decode(qrData);
-      } else {
-        // Basit metin formatı
-        final parts = qrData.split(':');
-
-        if (parts.length >= 3) {
-          return {
-            'roomId': parts[0],
-            'timestamp': int.tryParse(parts[1]) ?? 0,
-            'signature': parts[2]
-          };
-        }
-      }
-
-      return null;
-    } catch (e) {
-      print("QR veri ayrıştırma hatası: $e");
-      return null;
-    }
-  }
-
-  // Kullanıcı oturumu başlat
-  Future<void> _signIn(String roomId) async {
-    try {
-      // Amplify v2 sign-in
-      final signInResult = await Amplify.Auth.signIn(
+      // Auth sisteminize göre yerel oturum oluşturun
+      // Örnek bir yaklaşım:
+      await Amplify.Auth.signIn(
           username: "guest_$roomId",
-          password: _generateTemporaryPassword(roomId)
+          password: _generateSessionPassword(roomId, expiryTime)
       );
-
-      if (!signInResult.isSignedIn) {
-        // Kullanıcı yoksa kaydol ve tekrar oturum aç
-        await _signUp(roomId);
-        await Amplify.Auth.signIn(
-            username: "guest_$roomId",
-            password: _generateTemporaryPassword(roomId)
-        );
-      }
     } catch (e) {
-      print("Oturum açma hatası: $e");
-      // Kullanıcı yoksa kaydol ve tekrar oturum aç
+      print("Yerel oturum oluşturma hatası: $e");
+
+      // Kullanıcı yoksa kaydol ve tekrar dene
       if (e is UserNotFoundException) {
-        await _signUp(roomId);
+        await _signUp(roomId, expiryTime);
         await Amplify.Auth.signIn(
             username: "guest_$roomId",
-            password: _generateTemporaryPassword(roomId)
+            password: _generateSessionPassword(roomId, expiryTime)
         );
       } else {
         rethrow;
@@ -108,43 +103,49 @@ class AuthService {
     }
   }
 
-  // Yeni kullanıcı kaydı oluştur
-  Future<void> _signUp(String roomId) async {
+  // Geçici kullanıcı oluştur
+  Future<void> _signUp(String roomId, int expiryTime) async {
     try {
-      // Amplify v2 sign-up
-      final signUpResult = await Amplify.Auth.signUp(
+      final result = await Amplify.Auth.signUp(
           username: "guest_$roomId",
-          password: _generateTemporaryPassword(roomId),
+          password: _generateSessionPassword(roomId, expiryTime),
           options: SignUpOptions(
               userAttributes: {
                 AuthUserAttributeKey.email: "guest_$roomId@example.com",
-                CognitoUserAttributeKey.custom('room_id'): roomId
               }
           )
       );
 
+      // Eğer doğrulama gerektirmiyorsa otomatik onayla
+      if (result.nextStep.signUpStep == "CONFIRM_SIGN_UP_STEP") {
+        await Amplify.Auth.confirmSignUp(
+            username: "guest_$roomId",
+            confirmationCode: "000000" // Otomatik doğrulama için
+        );
+      }
     } catch (e) {
-      print("Kayıt hatası: $e");
+      print("Kullanıcı kaydı hatası: $e");
       rethrow;
     }
   }
 
-  // Odaya özel geçici şifre oluştur
-  String _generateTemporaryPassword(String roomId) {
-    final now = DateTime.now().toUtc();
-    final today = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
-    final secretKey = "SmartRoom2025Secret";
-
-    final data = utf8.encode('$roomId:$today:$secretKey');
-    final digest = sha256.convert(data);
-
-    return digest.toString().substring(0, 12) + "Aa1!";
+  // Oturum için parola üret
+  String _generateSessionPassword(String roomId, int expiryTime) {
+    // Bu fonksiyonu şifreleme algoritmanıza göre uyarlayın
+    // Örnek: roomId + expiryTime'dan hash üretme
+    final data = '$roomId:$expiryTime:${DateTime.now().day}';
+    // Basit bir karışım: gerçek uygulamada daha güçlü bir algoritma kullanın
+    String hash = '';
+    for (int i = 0; i < data.length; i++) {
+      hash += (data.codeUnitAt(i) % 10).toString();
+    }
+    // AWS Cognito şifre gereksinimleri: en az 8 karakter, büyük/küçük harf, rakam, özel karakter
+    return 'Temp${hash.substring(0, 6)}!1';
   }
 
   // Oturum durumunu kontrol et
   Future<bool> isSignedIn() async {
     try {
-      // Amplify v2
       final result = await Amplify.Auth.fetchAuthSession();
       return result.isSignedIn;
     } catch (e) {
