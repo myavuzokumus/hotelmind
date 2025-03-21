@@ -1,4 +1,6 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { verifyQrFunctionHandler } from '../functions/verify-qr/resource';
+import { aiAgentFunctionHandler } from '../functions/ai-agent/resource';
 
 /*== STEP 1 ===============================================================
 The section below creates a Todo database table with a "content" field. Try
@@ -7,11 +9,23 @@ specifies that any unauthenticated user can "create", "read", "update",
 and "delete" any "Todo" records.
 =========================================================================*/
 const schema = a.schema({
-  Todo: a
-    .model({
-      content: a.string(),
-    })
-    .authorization((allow) => [allow.guest()]),
+  qrVerify: a
+  .query()
+  .arguments({
+      name: a.string(),
+  })
+  .returns(a.string())
+  .authorization(allow => allow.guest()) // Yetkilendirme kuralı eklendi
+  .handler(a.handler.function(verifyQrFunctionHandler)),
+
+  aiAgent: a
+  .query()
+  .arguments({
+      name: a.string(),
+  })
+  .returns(a.string())
+  .authorization(allow => allow.guest()) // Yetkilendirme kuralı eklendi
+  .handler(a.handler.function(aiAgentFunctionHandler))
 });
 
 export type Schema = ClientSchema<typeof schema>;
