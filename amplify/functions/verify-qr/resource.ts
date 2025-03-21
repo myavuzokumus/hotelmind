@@ -13,7 +13,7 @@ export const verifyQrFunctionHandler = defineFunction(
       handler: "index.handler",
       runtime: Runtime.PYTHON_3_12, // or any other python version
       timeout: Duration.seconds(20), //  default is 3 seconds
-      functionName: "verifyQr",
+      functionName: "verifyQr-prod",
       code: Code.fromAsset("./amplify/functions/verify-qr"),
     }),
     {
