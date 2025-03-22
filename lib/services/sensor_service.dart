@@ -92,7 +92,7 @@ class SensorService {
       _cardStatusController.add(_isCardInserted);
 
       // Send data to AWS
-      _sendDataToAWS();
+      //_sendDataToAWS();
     });
   }
 

@@ -13,7 +13,7 @@ export const aiAgentFunctionHandler = defineFunction(
       handler: "index.handler",
       runtime: Runtime.PYTHON_3_12, // or any other python version
       timeout: Duration.seconds(20), //  default is 3 seconds
-      functionName: "aiAgent-prod",
+      functionName: "aiAgent-master-prod",
       code: Code.fromAsset("./amplify/functions/ai-agent"),
     }),
     {
