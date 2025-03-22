@@ -9,11 +9,12 @@ class SensorService {
   // Simülasyon için değişkenler
   bool _isMocked = true;
   Timer? _mockDataTimer;
+  int _cardStatusCounter = 0;
 
   // Sensör değerleri
   double _temperature = 22.0;
   double _humidity = 50.0;
-  int _gasLevel = 0;
+  int _gasLevel = 3;
   double _distance = 300.0;
   bool _isCardInserted = false;
 
@@ -70,9 +71,7 @@ class SensorService {
       if (_humidity > 70) _humidity = 70;
 
       // Simulate gas level changes
-      if (Random().nextInt(100) > 95) {
-        _gasLevel = Random().nextInt(10);
-      }
+      _gasLevel = 3 + Random().nextInt(2);
 
       // Simulate distance changes
       if (Random().nextInt(100) > 80) {
@@ -80,8 +79,10 @@ class SensorService {
       }
 
       // Simulate card status changes
-      if (Random().nextInt(100) > 95) {
+      _cardStatusCounter++;
+      if (_cardStatusCounter >= 60) {
         _isCardInserted = !_isCardInserted;
+        _cardStatusCounter = 0;
       }
 
       // Update streams

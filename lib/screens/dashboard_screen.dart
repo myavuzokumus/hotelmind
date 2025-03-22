@@ -34,6 +34,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isCardInserted = false;
   String _roomMode = "Normal";
 
+  // YENİ: Aydınlatma ve cihaz durumları
+  bool _mainLightOn = false;
+  bool _deskLightOn = false;
+  bool _bedLightOn = false;
+  bool _bathroomLightOn = false;
+  bool _tvOn = false;
+  bool _acOn = false;
+
   // Abonelikler
   late StreamSubscription _temperatureSub;
   late StreamSubscription _humiditySub;
@@ -153,6 +161,225 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // YENİ: Aydınlatma kontrol metodları
+  Future<void> _toggleLight(String type, bool value) async {
+    try {
+      setState(() {
+        switch (type) {
+          case 'main':
+            _mainLightOn = value;
+            break;
+          case 'desk':
+            _deskLightOn = value;
+            break;
+          case 'bed':
+            _bedLightOn = value;
+            break;
+          case 'bathroom':
+            _bathroomLightOn = value;
+            break;
+        }
+      });
+
+      // Servise bilgiyi gönder
+      // await _roomService.setRoomControl(_roomId, {
+      //   'type': 'light',
+      //   'lightType': type,
+      //   'status': value
+      // });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_getLightName(type)} ${value ? 'açıldı' : 'kapatıldı'}'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      print('Aydınlatma kontrolü hatası: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('İşlem sırasında bir hata oluştu'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // YENİ: Cihaz kontrolleri
+  Future<void> _toggleDevice(String type, bool value) async {
+    try {
+      setState(() {
+        switch (type) {
+          case 'tv':
+            _tvOn = value;
+            break;
+          case 'ac':
+            _acOn = value;
+            break;
+        }
+      });
+
+      // Servise bilgiyi gönder
+      // await _roomService.setRoomControl(_roomId, {
+      //   'type': 'device',
+      //   'deviceType': type,
+      //   'status': value
+      // });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_getDeviceName(type)} ${value ? 'açıldı' : 'kapatıldı'}'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      print('Cihaz kontrolü hatası: $e');
+    }
+  }
+
+  // YENİ: Temizlik talebi
+  Future<void> _showCleaningRequestDialog() async {
+    String note = '';
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Temizlik Talebi'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Temizlik ekibine iletilecek talebiniz var mı?'),
+            SizedBox(height: 16),
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Ekstra havlu, ekstra çarşaf, vb.',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+              onChanged: (value) {
+                note = value;
+              },
+            )
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                //await _roomService.sendCleaningRequest(_roomId, note);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Temizlik talebiniz iletildi'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Talep gönderilirken hata oluştu'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: Text('Talep Gönder'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // YENİ: Resepsiyona mesaj gönder
+  Future<void> _showReceptionMessageDialog() async {
+    String message = '';
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Resepsiyona Mesaj'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Mesajınızı yazın:'),
+            SizedBox(height: 16),
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Mesajınızı buraya yazın...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 5,
+              onChanged: (value) {
+                message = value;
+              },
+            )
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (message.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Lütfen bir mesaj yazın'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+
+              Navigator.pop(context);
+              try {
+                //await _roomService.sendMessageToReception(_roomId, message);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Mesajınız resepsiyona iletildi'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Mesaj gönderilirken hata oluştu'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: Text('Gönder'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // YENİ: Yardımcı metotlar
+  String _getLightName(String type) {
+    switch (type) {
+      case 'main': return 'Ana aydınlatma';
+      case 'desk': return 'Masa ışığı';
+      case 'bed': return 'Yatak ışığı';
+      case 'bathroom': return 'Banyo ışığı';
+      default: return 'Işık';
+    }
+  }
+
+  String _getDeviceName(String type) {
+    switch (type) {
+      case 'tv': return 'Televizyon';
+      case 'ac': return 'Klima';
+      default: return 'Cihaz';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -243,6 +470,98 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
+                SizedBox(height: 24),
+
+                // YENİ: Oda Kontrol Bölümü
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Oda Kontrolleri',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 16),
+
+                        // Aydınlatma Kontrolleri
+                        Text('Aydınlatma', style: TextStyle(fontWeight: FontWeight.bold)),
+                        SwitchListTile(
+                          title: Text('Ana Aydınlatma'),
+                          value: _mainLightOn,
+                          secondary: Icon(Icons.lightbulb, color: _mainLightOn ? Colors.yellow : Colors.grey),
+                          onChanged: (value) => _toggleLight('main', value),
+                        ),
+                        SwitchListTile(
+                          title: Text('Masa Işığı'),
+                          value: _deskLightOn,
+                          secondary: Icon(Icons.desk, color: _deskLightOn ? Colors.yellow : Colors.grey),
+                          onChanged: (value) => _toggleLight('desk', value),
+                        ),
+                        SwitchListTile(
+                          title: Text('Yatak Işığı'),
+                          value: _bedLightOn,
+                          secondary: Icon(Icons.bed, color: _bedLightOn ? Colors.yellow : Colors.grey),
+                          onChanged: (value) => _toggleLight('bed', value),
+                        ),
+                        SwitchListTile(
+                          title: Text('Banyo Işığı'),
+                          value: _bathroomLightOn,
+                          secondary: Icon(Icons.bathroom, color: _bathroomLightOn ? Colors.yellow : Colors.grey),
+                          onChanged: (value) => _toggleLight('bathroom', value),
+                        ),
+
+                        Divider(height: 32),
+
+                        // Cihaz Kontrolleri
+                        Text('Cihazlar', style: TextStyle(fontWeight: FontWeight.bold)),
+                        SwitchListTile(
+                          title: Text('Televizyon'),
+                          value: _tvOn,
+                          secondary: Icon(Icons.tv, color: _tvOn ? Colors.blue : Colors.grey),
+                          onChanged: (value) => _toggleDevice('tv', value),
+                        ),
+                        SwitchListTile(
+                          title: Text('Klima'),
+                          value: _acOn,
+                          secondary: Icon(Icons.ac_unit, color: _acOn ? Colors.blue : Colors.grey),
+                          onChanged: (value) => _toggleDevice('ac', value),
+                        ),
+
+                        Divider(height: 32),
+
+                        // Hizmet Butonları
+                        Text('Hizmetler', style: TextStyle(fontWeight: FontWeight.bold)),
+                        SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _showCleaningRequestDialog,
+                              icon: Icon(Icons.cleaning_services),
+                              label: Text('Temizlik\nTalep Et'),
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _showReceptionMessageDialog,
+                              icon: Icon(Icons.message),
+                              label: Text('Resepsiyona\nMesaj Gönder'),
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 SizedBox(height: 24),
 
                 // Sensör grafikleri
