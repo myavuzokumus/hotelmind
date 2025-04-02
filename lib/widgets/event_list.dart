@@ -1,34 +1,70 @@
+// lib/widgets/event_list.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class EventList extends StatelessWidget {
   final List<Map<String, dynamic>> events;
+  final double maxHeight;
+  final bool showTitle;
 
   const EventList({
-    Key? key,
+    super.key,
     required this.events,
-  }) : super(key: key);
+    this.maxHeight = 300,
+    this.showTitle = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (events.isEmpty) {
-      return Container(
+      return SizedBox(
         height: 200,
         child: Center(
-          child: Text('Henüz olay kaydı bulunmuyor'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.event_busy, size: 48, color: Colors.grey.shade300),
+              SizedBox(height: 16),
+              Text(
+                'Henüz olay kaydı bulunmuyor',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return Container(
-      height: 300,
-      child: ListView.builder(
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          final event = events[index];
-          return _buildEventItem(context, event);
-        },
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showTitle) ...[
+          const Text(
+            'Son Olaylar',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          constraints: BoxConstraints(
+            maxHeight: maxHeight,
+          ),
+          child: ListView.separated(
+            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            itemCount: events.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final event = events[index];
+              return _buildEventItem(context, event);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -75,31 +111,74 @@ class EventList extends StatelessWidget {
         color = Colors.grey;
     }
 
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(
-          _getEventTitle(eventType),
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
+    return InkWell(
+      onTap: () => _showEventDetails(context, event),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 4),
-            Text(description),
-            SizedBox(height: 2),
-            Text(
-              '$formattedTime - $formattedDate',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            Container(
+              margin: EdgeInsets.only(top: 4),
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _getEventTitle(eventType),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          formattedTime,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    description,
+                    style: TextStyle(fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    formattedDate,
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        isThreeLine: true,
-        onTap: () => _showEventDetails(context, event),
       ),
     );
   }
@@ -135,29 +214,54 @@ class EventList extends StatelessWidget {
             children: [
               Text('Açıklama:'),
               SizedBox(height: 8),
-              Text(
-                event['description'] ?? event['details'] ?? 'Açıklama yok',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  event['description'] ?? event['details'] ?? 'Açıklama yok',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
               SizedBox(height: 16),
               Text('Zaman:'),
               SizedBox(height: 8),
-              Text(
-                event['timestamp'] != null
-                    ? DateFormat('dd/MM/yyyy HH:mm:ss').format(
-                    DateTime.fromMillisecondsSinceEpoch(event['timestamp'])
-                )
-                    : 'Bilinmiyor',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  event['timestamp'] != null
+                      ? DateFormat('dd/MM/yyyy HH:mm:ss').format(
+                      DateTime.fromMillisecondsSinceEpoch(event['timestamp'])
+                  )
+                      : 'Bilinmiyor',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
               if (event['details'] is Map || event['mode'] != null || event['value'] != null)
                 ...[
                   SizedBox(height: 16),
                   Text('Ek Bilgiler:'),
                   SizedBox(height: 8),
-                  Text(
-                    _getAdditionalInfo(event),
-                    style: TextStyle(fontFamily: 'monospace'),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Text(
+                      _getAdditionalInfo(event),
+                      style: TextStyle(fontFamily: 'monospace', fontSize: 14),
+                    ),
                   ),
                 ],
             ],
