@@ -1,14 +1,17 @@
 import json
 import boto3
 import datetime
-import numpy as np
 from decimal import Decimal
+import os
 
-# AWS servisleri
-dynamodb = boto3.resource('dynamodb')
-iot = boto3.client('iot-data')
-polly = boto3.client('polly')
-sns = boto3.client('sns')
+# AWS bölgesini ortam değişkeninden al
+AWS_REGION = os.environ.get('AWS_REGION', 'eu-central-1')
+
+# AWS servisleri - bölge belirterek başlat
+dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
+iot = boto3.client('iot-data', region_name=AWS_REGION)
+polly = boto3.client('polly', region_name=AWS_REGION)
+sns = boto3.client('sns', region_name=AWS_REGION)
 
 # DynamoDB tabloları
 sensor_table = dynamodb.Table('SensorData')
@@ -20,7 +23,10 @@ ROOM_EMPTY_THRESHOLD = 150  # cm (mesafe sensörü için)
 TEMPERATURE_COMFORT = 22.0  # Celsius
 HUMIDITY_COMFORT = 50.0     # %
 GAS_ALERT_THRESHOLD = 5     # 0-10 arası gaz seviyesi
-NOTIFICATION_TOPIC = "arn:aws:sns:region:account:RoomAlertTopic"
+
+# Ortam değişkenlerinden kaynakları al
+NOTIFICATION_TOPIC = os.environ.get('NOTIFICATION_TOPIC', 'arn:aws:sns:eu-central-1:471112835770:smart-room-system-alerts-dev')
+ASSETS_BUCKET = os.environ.get('ASSETS_BUCKET_NAME', 'smart-room-system-assets-dev')
 
 # JSON serileştirme yardımcısı
 class DecimalEncoder(json.JSONEncoder):
@@ -29,7 +35,7 @@ class DecimalEncoder(json.JSONEncoder):
             return float(o)
         return super(DecimalEncoder, self).default(o)
 
-def lambda_handler(event, context):
+def handler(event, context):
     """
     Bu Lambda fonksiyonu, sensör verilerini alır, durumu analiz eder ve
     gerekli kararları verir.
