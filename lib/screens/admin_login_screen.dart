@@ -60,9 +60,6 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Yetkili Girişi'),
-      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
