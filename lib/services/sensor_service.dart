@@ -100,7 +100,7 @@ class SensorService {
   // Connect to real sensors (this would integrate with actual IoT devices)
   void _connectToRealSensors() {
     // This would be replaced with actual IoT device code
-    print("Connecting to real sensors...");
+    safePrint("Connecting to real sensors...");
   }
 
   // Send data to AWS IoT and DynamoDB
@@ -108,7 +108,7 @@ class SensorService {
     try {
       // Amplify v2 DataStore
       final sensorData = SensorData(
-          deviceId: 'room_001',
+          roomId: 'room_001',
           timestamp: DateTime.now().millisecondsSinceEpoch,
           temperature: _temperature,
           humidity: _humidity,
