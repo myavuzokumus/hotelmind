@@ -1,221 +1,196 @@
 import 'dart:convert';
-
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hotelmind/models/ResponseModel.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'debug_log_provider.dart';
 
+// AuthService için provider tanımı
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService(ref);
+});
+
 class AuthService {
+  final Ref _ref;
 
-  final DebugLogProvider _debugLogger;
+  AuthService(this._ref);
 
-  // Constructor - debug logger'ı dışarıdan alır
-  AuthService(this._debugLogger);
+  // Rate limiting için değişkenler
+  static const String _RATE_LIMIT_KEY = "qr_scan_timestamps";
+  static const int _MAX_REQUESTS_PER_MINUTE = 10;
+  static const int _WINDOW_SECONDS = 60;
 
-  // QR kodu doğrula
-
-  // Hem konsola hem de debug logger'a yazar
+  // Güvenli log metodu
   void _log(String message) {
-    print(message);
-    _debugLogger.log(message);
+    safePrint(message);
+    try {
+        _ref.read(debugLogProvider.notifier).log(message);
+    } catch (e) {
+      safePrint("Log hatası: $e");
+    }
   }
 
+  // Rate limiting kontrolü
+  Future<bool> _checkRateLimit() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? storedData = prefs.getString(_RATE_LIMIT_KEY);
 
-  Future<bool> verifyQRCode(String qrData) async {
+      List<int> timestamps = [];
+      if (storedData != null) {
+        timestamps = List<int>.from(jsonDecode(storedData));
+      }
+
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final windowStart = now - _WINDOW_SECONDS;
+
+      // Zaman aralığı dışındaki kayıtları temizle
+      timestamps = timestamps.where((time) => time >= windowStart).toList();
+
+      // Son isteklerin sayısını kontrol et
+      if (timestamps.length >= _MAX_REQUESTS_PER_MINUTE) {
+        _log("Rate limit aşıldı! Son 1 dakikada $_MAX_REQUESTS_PER_MINUTE istek yapıldı.");
+        return false;
+      }
+
+      // Yeni timestamp ekle
+      timestamps.add(now);
+      await prefs.setString(_RATE_LIMIT_KEY, jsonEncode(timestamps));
+
+      _log("Rate limit kontrolü başarılı. Son 1 dakikada ${timestamps.length} istek.");
+      return true;
+    } catch (e) {
+      _log("Rate limit kontrolü sırasında hata: $e");
+      return false;
+    }
+  }
+
+  Map<String, dynamic>? parseQrData(String qrData) {
+    // QR veriyi parse et
+    Map<String, dynamic>? qrJson;
+    try {
+      qrJson = json.decode(qrData);
+      _log("QR Kod JSON formatında başarıyla ayrıştırıldı.");
+    } catch (e) {
+      _log("QR kod JSON formatı ayrıştırma hatası: $e");
+      return null;
+    }
+
+    if (qrJson == null) {
+      _log("QR kod verileri ayrıştırılamadı");
+      return null;
+    }
+
+    _log("QR Kod alanları kontrol ediliyor...");
+    final roomId = qrJson['roomId'];
+    final timestamp = qrJson['timestamp'];
+    final expiry = qrJson['expiry'];
+    final sessionId = qrJson['sessionId'];
+    final signature = qrJson['signature'];
+
+    _log("roomId: $roomId");
+    _log("timestamp: $timestamp");
+    _log("expiry: $expiry");
+    _log("sessionId: $sessionId");
+    _log("signature: ${signature?.substring(0, 10)}...");
+
+    if (roomId == null || timestamp == null || expiry == null ||
+        sessionId == null || signature == null) {
+      _log("HATA: QR kod eksik alanlar içeriyor.");
+      return null;
+    }
+
+    return qrJson;
+  }
+
+  Future<ResponseModel<Map<String, dynamic>>> verifyQRCode(String qrData) async {
     try {
       _log("=== QR KOD DOĞRULAMA BAŞLADI ===");
+
+      if (!await _checkRateLimit()) {
+        _log("Çok fazla istek gönderildi. Lütfen biraz bekleyin.");
+        return ResponseModel.error("Çok fazla istek gönderildi. Lütfen biraz bekleyin.");
+      }
+
       _log("Alınan QR veri: $qrData");
 
-      // QR veriyi parse et
-      Map<String, dynamic>? qrJson;
-      try {
-        qrJson = json.decode(qrData);
-        _log("QR Kod JSON formatında başarıyla ayrıştırıldı.");
-      } catch (e) {
-        _log("QR kod JSON formatı ayrıştırma hatası: $e");
-        // Alternatif format denemesi gerekebilir
-      }
-
+      Map<String, dynamic>? qrJson = parseQrData(qrData);
       if (qrJson == null) {
-        _log("QR kod verileri ayrıştırılamadı");
-        return false;
-      }
-
-      _log("QR Kod alanları kontrol ediliyor...");
-      // Gerekli alanları kontrol et
-      final roomId = qrJson['roomId'];
-      final timestamp = qrJson['timestamp'];
-      final expiry = qrJson['expiry'];
-      final sessionId = qrJson['sessionId'];
-      final signature = qrJson['signature'];
-
-      _log("roomId: $roomId");
-      _log("timestamp: $timestamp");
-      _log("expiry: $expiry");
-      _log("sessionId: $sessionId");
-      _log("signature: ${signature?.substring(0, 10)}...");
-
-      if (roomId == null || timestamp == null || expiry == null ||
-          sessionId == null || signature == null) {
-        _log("HATA: QR kod eksik alanlar içeriyor.");
-        print("QR kod eksik alanlar içeriyor");
-        return false;
+        return ResponseModel.error("QR kod formatı geçerli değil.");
       }
 
       _log("Süre kontrolü yapılıyor...");
-      // Geçerlilik süresi kontrolü
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final expiry = qrJson['expiry'];
       _log("Şu anki zaman: $now, Son geçerlilik: $expiry");
+
       if (now > expiry) {
-        _log("HATA: QR kodun süresi dolmuş! Şu anki zaman: $now, Son geçerlilik: $expiry");
-        return false;
+        _log("HATA: QR kodun süresi dolmuş!");
+        return ResponseModel.error("QR kodun süresi dolmuş.");
       }
 
       _log("QR kod zaman kontrolü başarılı. Kod hala geçerli.");
-      // Doğrulama için AWS'ye gönder
-      // final restOperation = Amplify.API.post(
-      //     '/verify-qr',
-      //     body: HttpPayload.json({
-      //       'qrCode': qrData,
-      //     })
-      // );
-      //
-      // final response = await restOperation.response;
-      //
-      // if (response.statusCode == 200) {
-      //   final responseBytes = await response.body.toList();
-      //   final responseString = utf8.decode(responseBytes.expand((i) => i).toList());
-      //   final responseData = json.decode(responseString);
-      //
-      //   if (responseData['isValid'] == true) {
-      //     print("QR kod doğrulandı: $responseData");
-      //
-      //     // Yerel kullanıcı oturumu başlat
-      //     await _createLocalSession(roomId, expiry);
-      //     return true;
-      //   } else {
-      //     print("QR kod geçersiz: ${responseData['message']}");
-      //   }
-      // } else {
-      //   print("API yanıt hatası: ${response.statusCode}");
-      // }
 
-      await _createLocalSession(roomId, expiry);
+      try {
+        const document = '''
+      query QrVerify(\$name: String!) {
+              QrVerify(name: \$name)
+            }
+      ''';
 
-      // Simüle edilmiş doğrulama - API olmadan çalışmak için
-      _simulateServerVerification(roomId, timestamp, expiry, sessionId, signature);
-      // Test için yerel doğrulama - hızlı başlamak için
-      _log("Geçici olarak başarılı kabul ediliyor (Debug modu)");
-
-      return true;
-    } catch (e) {
-      print("QR kod doğrulama hatası: $e");
-      return false;
-    }
-  }
-
-  // Test amaçlı doğrulama simülasyonu
-  void _simulateServerVerification(String roomId, int timestamp, int expiry,
-      String sessionId, String signature) {
-    _log("\n=== SUNUCU DOĞRULAMA SİMÜLASYONU ===");
-    _log("roomId: $roomId");
-    _log("timestamp: $timestamp (${DateTime.fromMillisecondsSinceEpoch(timestamp * 1000)})");
-    _log("expiry: $expiry (${DateTime.fromMillisecondsSinceEpoch(expiry * 1000)})");
-    _log("sessionId: $sessionId");
-    _log("signature: ${signature.substring(0, 10)}...");
-
-    // Burada gerçek doğrulama mantığı olacak
-    // Bu sadece simülasyon amaçlı
-    _log("Sunucu doğrulaması başarılı kabul edildi.");
-    _log("======================================\n");
-  }
-
-  // Yerel oturum başlat
-  Future<void> _createLocalSession(String roomId, int expiryTime) async {
-    try {
-      // Auth sisteminize göre yerel oturum oluşturun
-      // Örnek bir yaklaşım:
-      _log("Yerel oturum oluşturuluyor roomId: $roomId");
-      await Amplify.Auth.signIn(
-          username: "guest_$roomId",
-          password: _generateSessionPassword(roomId, expiryTime)
-      );
-    } catch (e) {
-      print("Yerel oturum oluşturma hatası: $e");
-
-      // Kullanıcı yoksa kaydol ve tekrar dene
-      if (e is UserNotFoundException) {
-        await _signUp(roomId, expiryTime);
-        await Amplify.Auth.signIn(
-            username: "guest_$roomId",
-            password: _generateSessionPassword(roomId, expiryTime)
+        final request = GraphQLRequest<String>(
+          document: document,
+          variables: {'name': qrData},
+          decodePath: 'qrVerify',
+          authorizationMode: APIAuthorizationType.apiKey,
         );
-      } else {
-        rethrow;
-      }
-    }
-  }
 
-  // Geçici kullanıcı oluştur
-  Future<void> _signUp(String roomId, int expiryTime) async {
-    try {
-      final result = await Amplify.Auth.signUp(
-          username: "guest_$roomId",
-          password: _generateSessionPassword(roomId, expiryTime),
-          options: SignUpOptions(
-              userAttributes: {
-                AuthUserAttributeKey.email: "guest_$roomId@example.com",
+        final response = await Amplify.API.query(request: request).response;
+
+        if (response.data != null) {
+          _log("Ham QR API yanıtı: ${response.data}");
+
+          try {
+            Map<String, dynamic> firstLevel = jsonDecode(response.data!);
+            Map<String, dynamic> secondLevel = jsonDecode(firstLevel['QrVerify']);
+            int statusCode = secondLevel['statusCode'];
+            Map<String, dynamic> thirdLevel = jsonDecode(secondLevel['body']);
+
+            bool isValid = thirdLevel['isValid'];
+            String message = thirdLevel['message'];
+
+            _log("API Durum Kodu: $statusCode");
+            _log("Doğrulama Sonucu: $isValid");
+            _log("Mesaj: $message");
+
+            if (statusCode == 200) {
+              if (isValid) {
+                return ResponseModel.success(qrJson);
+              } else {
+                _log("QR kodu geçerli değil: $message");
+                return ResponseModel.error(message);
               }
-          )
-      );
+            } else {
+              _log("API hata döndürdü: $message");
+              return ResponseModel.error("Sunucu hatası: $message");
+            }
+          } catch (e) {
+            _log("JSON ayrıştırma hatası: $e");
+            return ResponseModel.error("Sunucu yanıtı işlenirken hata oluştu.");
+          }
+        } else if (response.errors.isNotEmpty) {
+          _log("API hatası: ${response.errors.first.message}");
+          return ResponseModel.error("API hatası: ${response.errors.first.message}");
+        }
 
-      // Eğer doğrulama gerektirmiyorsa otomatik onayla
-      if (result.nextStep.signUpStep == "CONFIRM_SIGN_UP_STEP") {
-        await Amplify.Auth.confirmSignUp(
-            username: "guest_$roomId",
-            confirmationCode: "000000" // Otomatik doğrulama için
-        );
+        return ResponseModel.error("Bilinmeyen bir hata oluştu.");
+      } catch (e) {
+        _log("API çağrısı hatası: $e");
+        return ResponseModel.error("Sunucuya bağlanırken hata oluştu.");
       }
     } catch (e) {
-      print("Kullanıcı kaydı hatası: $e");
-      rethrow;
-    }
-  }
-
-  // Oturum için parola üret
-  String _generateSessionPassword(String roomId, int expiryTime) {
-    // Bu fonksiyonu şifreleme algoritmanıza göre uyarlayın
-    // Örnek: roomId + expiryTime'dan hash üretme
-    final data = '$roomId:$expiryTime:${DateTime.now().day}';
-    // Basit bir karışım: gerçek uygulamada daha güçlü bir algoritma kullanın
-    String hash = '';
-    for (int i = 0; i < data.length; i++) {
-      hash += (data.codeUnitAt(i) % 10).toString();
-    }
-    // AWS Cognito şifre gereksinimleri: en az 8 karakter, büyük/küçük harf, rakam, özel karakter
-    return 'Temp${hash.substring(0, 6)}!1';
-  }
-
-  // Oturum durumunu kontrol et
-  Future<bool> isSignedIn() async {
-    try {
-      final result = await Amplify.Auth.fetchAuthSession();
-      _log("Oturum durumu kontrolü - başarılı kabul edildi (debug)");
-      return result.isSignedIn;
-    } catch (e) {
-      print("Oturum durumu kontrolü hatası: $e");
-      return false;
-    }
-  }
-
-  // Oturumu kapat
-  Future<void> signOut() async {
-    try {
-      _log("Oturum kapatıldı");
-      await Amplify.Auth.signOut();
-    } catch (e) {
-      print("Oturum kapatma hatası: $e");
-      rethrow;
+      _log("QR kod doğrulama hatası: $e");
+      return ResponseModel.error("QR kod doğrulama hatası");
     }
   }
 }
