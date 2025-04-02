@@ -2,30 +2,104 @@ import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { verifyQrFunctionHandler } from '../functions/verify-qr/resource';
 import { aiAgentFunctionHandler } from '../functions/ai-agent/resource';
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any unauthenticated user can "create", "read", "update", 
-and "delete" any "Todo" records.
-=========================================================================*/
 const schema = a.schema({
-  qrVerify: a
-  .query()
-  .arguments({
-      name: a.string(),
-  })
-  .returns(a.string())
-  .authorization(allow => allow.guest()) // Yetkilendirme kuralı eklendi
-  .handler(a.handler.function(verifyQrFunctionHandler)),
+  // QR Kodları doğrulaması için oturum tablosu
+  QrSession: a
+    .model({
+      sessionId: a.string().required(),
+      roomId: a.string().required(),
+      usedAt: a.integer().required(),
+      expiry: a.integer().required(),
+    })
+    .identifier(['sessionId'])
+    .authorization(allow => [
+      allow.publicApiKey(),
+      allow.authenticated(),
+    ]),
 
-  aiAgent: a
-  .query()
-  .arguments({
-      name: a.string(),
-  })
-  .returns(a.string())
-  .authorization(allow => allow.guest()) // Yetkilendirme kuralı eklendi
-  .handler(a.handler.function(aiAgentFunctionHandler))
+  // Oda sensör verileri tablosu
+  SensorData: a
+    .model({
+      roomId: a.string().required(),
+      timestamp: a.integer().required(),
+      temperature: a.float().required(),
+      humidity: a.float().required(),
+      gasLevel: a.integer().required(),
+      distance: a.float().required(),
+      occupied: a.boolean().required(),
+      cardInserted: a.boolean().required(),
+    })
+    .authorization(allow => [
+      allow.authenticated(),
+    ]),
+
+  // Oda olayları tablosu
+  RoomEvent: a
+    .model({
+      roomId: a.string().required(),
+      eventType: a.string().required(), // ALERT, SECURITY_WARNING vb.
+      timestamp: a.integer().required(),
+      description: a.string().required(),
+      resolved: a.boolean().required(),
+    })
+    .authorization(allow => [
+      allow.authenticated(),
+    ]),
+
+  // Kullanıcı tercihleri tablosu
+  UserPreference: a
+    .model({
+      roomId: a.string().required(),
+      preferences: a.json().required(), // JSON formatında tercihler
+    })
+    .authorization(allow => [
+      allow.owner(),
+      allow.authenticated(),
+    ]),
+
+  // QR kodu doğrulama için özel resolver
+  QrVerify: a
+    .query()
+    .arguments({
+      name: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization(allow => [
+      allow.publicApiKey()
+    ])
+    .handler(a.handler.function(verifyQrFunctionHandler)),
+
+  // AI agent işlemi için özel resolver
+  ProcessSensorData: a
+    .mutation()
+    .arguments({
+      deviceId: a.string().required(),
+      temperature: a.float(),
+      humidity: a.float(),
+      gasLevel: a.integer(),
+      distance: a.float(),
+      cardInserted: a.boolean(),
+      timestamp: a.integer(),
+    })
+    .returns(a.json())
+    .authorization(allow => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(aiAgentFunctionHandler)),
+
+    QrRateLimit: a
+      .model({
+        sourceIp: a.string().required(),
+        timestamp: a.integer().required(),
+        ttl: a.integer(),
+      })
+      .secondaryIndexes((index) => [
+            index("sourceIp")
+              .sortKeys(["timestamp"]),
+          ])
+      .authorization(allow => [
+        allow.publicApiKey(), // Lambda fonksiyonunun erişebilmesi için
+      ])
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -33,7 +107,10 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'iam',
+    defaultAuthorizationMode: 'userPool',
+    apiKeyAuthorizationMode: {
+      expiresInDays: 30,
+    },
   },
 });
 
