@@ -1,243 +1,57 @@
-import 'package:flutter/material.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
 import 'dart:async';
-import '../services/sensor_service.dart';
+
+import 'package:amplify_api/amplify_api.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hotelmind/models/QrSession.dart';
+import 'package:hotelmind/screens/settings_screen.dart';
+import 'package:hotelmind/services/event_bus.dart';
+import 'package:hotelmind/services/navigation_service.dart';
+
 import '../services/room_automation_service.dart';
+import '../services/sensor_service.dart';
+import '../widgets/event_list.dart';
 import '../widgets/room_status_card.dart';
 import '../widgets/sensor_chart.dart';
-import '../widgets/event_list.dart';
 
-class DashboardScreen extends StatefulWidget {
+part 'dashboard_mixin.dart';
+
+class DashboardScreen extends ConsumerStatefulWidget {
+  final String roomId;
+  final String sessionId;
+
+  const DashboardScreen({
+    super.key,
+    required this.roomId,
+    required this.sessionId,
+  });
+
   @override
-  _DashboardScreenState createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  final SensorService _sensorService = SensorService();
-  final RoomAutomationService _roomService = RoomAutomationService();
+class _DashboardScreenState extends ConsumerState<DashboardScreen> with _DashboardMixin {
 
-  bool _isLoading = true;
-  String _roomId = 'room_001';
-  String _userName = 'Misafir';
-
-  // Sensör verileri listeleri
-  final List<double> _temperatureHistory = [];
-  final List<double> _humidityHistory = [];
-  final List<int> _gasHistory = [];
-  final List<Map<String, dynamic>> _eventHistory = [];
-
-  // Mevcut değerler
-  double _currentTemperature = 22.0;
-  double _currentHumidity = 50.0;
-  int _currentGasLevel = 0;
-  bool _isRoomOccupied = false;
-  bool _isCardInserted = false;
-  String _roomMode = "Normal";
-
-  // YENİ: Aydınlatma ve cihaz durumları
-  bool _mainLightOn = false;
-  bool _deskLightOn = false;
-  bool _bedLightOn = false;
-  bool _bathroomLightOn = false;
-  bool _tvOn = false;
-  bool _acOn = false;
-
-  // Abonelikler
-  late StreamSubscription _temperatureSub;
-  late StreamSubscription _humiditySub;
-  late StreamSubscription _gasSub;
-  late StreamSubscription _distanceSub;
-  late StreamSubscription _cardSub;
-  late StreamSubscription _eventSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _initialize();
+  Future<void> _showSettingsDialog() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          clipBehavior: Clip.antiAlias, // Köşelerden taşan içeriği kırpmak için
+          insetPadding: EdgeInsets.all(16), // Ekrandan uzaklık
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.65, // Genişlik sınırlama
+            child: SettingsScreen(roomId: _roomId, sessionId: _currentSessionId),
+          ),
+        );
+      },
+    );
   }
 
-  Future<void> _initialize() async {
-    try {
-      // Sensör servisleri başlat
-      _sensorService.initialize();
-
-      // Kullanıcı verisini al
-      final authSession = await Amplify.Auth.fetchAuthSession();
-      if (authSession.isSignedIn) {
-        final user = await Amplify.Auth.getCurrentUser();
-        setState(() {
-          _userName = user.username;
-        });
-      }
-
-      // Sensör verilerine abone ol
-      _temperatureSub = _sensorService.temperatureStream.listen((value) {
-        setState(() {
-          _currentTemperature = value;
-          _temperatureHistory.add(value);
-          if (_temperatureHistory.length > 50) _temperatureHistory.removeAt(0);
-        });
-      });
-
-      _humiditySub = _sensorService.humidityStream.listen((value) {
-        setState(() {
-          _currentHumidity = value;
-          _humidityHistory.add(value);
-          if (_humidityHistory.length > 50) _humidityHistory.removeAt(0);
-        });
-      });
-
-      _gasSub = _sensorService.gasLevelStream.listen((value) {
-        setState(() {
-          _currentGasLevel = value;
-          _gasHistory.add(value);
-          if (_gasHistory.length > 50) _gasHistory.removeAt(0);
-        });
-      });
-
-      _distanceSub = _sensorService.distanceStream.listen((value) {
-        setState(() {
-          _isRoomOccupied = value < 150; // 150cm altında kişi var kabul et
-        });
-      });
-
-      _cardSub = _sensorService.cardStatusStream.listen((value) {
-        setState(() {
-          _isCardInserted = value;
-        });
-      });
-
-      // Oda olaylarına abone ol
-      _eventSub = _roomService.eventStream.listen((event) {
-        setState(() {
-          _eventHistory.add(event);
-          if (_eventHistory.length > 100) _eventHistory.removeAt(0);
-
-          // Oda modunu güncelle
-          if (event['type'] == 'MODE_CHANGE') {
-            _roomMode = event['mode'];
-          }
-        });
-      });
-
-      // Oda geçmişini yükle
-      _loadRoomHistory();
-
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      print("Initialization error: $e");
-    }
-  }
-
-  Future<void> _loadRoomHistory() async {
-    try {
-      // Veritabanından son sensör verilerini al
-      final sensorData = await _roomService.getSensorHistory(_roomId);
-      // Veritabanından son olayları al
-      final eventData = await _roomService.getEventHistory(_roomId);
-
-      setState(() {
-        if (sensorData != null) {
-          _temperatureHistory.clear();
-          _humidityHistory.clear();
-          _gasHistory.clear();
-
-          for (var data in sensorData) {
-            _temperatureHistory.add(data['temperature']);
-            _humidityHistory.add(data['humidity']);
-            _gasHistory.add(data['gasLevel']);
-          }
-        }
-
-        if (eventData != null) {
-          _eventHistory.clear();
-          _eventHistory.addAll(eventData);
-        }
-      });
-    } catch (e) {
-      print("Error loading room history: $e");
-    }
-  }
-
-  // YENİ: Aydınlatma kontrol metodları
-  Future<void> _toggleLight(String type, bool value) async {
-    try {
-      setState(() {
-        switch (type) {
-          case 'main':
-            _mainLightOn = value;
-            break;
-          case 'desk':
-            _deskLightOn = value;
-            break;
-          case 'bed':
-            _bedLightOn = value;
-            break;
-          case 'bathroom':
-            _bathroomLightOn = value;
-            break;
-        }
-      });
-
-      // Servise bilgiyi gönder
-      // await _roomService.setRoomControl(_roomId, {
-      //   'type': 'light',
-      //   'lightType': type,
-      //   'status': value
-      // });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${_getLightName(type)} ${value ? 'açıldı' : 'kapatıldı'}'),
-          duration: Duration(seconds: 1),
-        ),
-      );
-    } catch (e) {
-      print('Aydınlatma kontrolü hatası: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('İşlem sırasında bir hata oluştu'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  // YENİ: Cihaz kontrolleri
-  Future<void> _toggleDevice(String type, bool value) async {
-    try {
-      setState(() {
-        switch (type) {
-          case 'tv':
-            _tvOn = value;
-            break;
-          case 'ac':
-            _acOn = value;
-            break;
-        }
-      });
-
-      // Servise bilgiyi gönder
-      // await _roomService.setRoomControl(_roomId, {
-      //   'type': 'device',
-      //   'deviceType': type,
-      //   'status': value
-      // });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${_getDeviceName(type)} ${value ? 'açıldı' : 'kapatıldı'}'),
-          duration: Duration(seconds: 1),
-        ),
-      );
-    } catch (e) {
-      print('Cihaz kontrolü hatası: $e');
-    }
-  }
-
-  // YENİ: Temizlik talebi
   Future<void> _showCleaningRequestDialog() async {
     String note = '';
 
@@ -361,23 +175,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // YENİ: Yardımcı metotlar
-  String _getLightName(String type) {
-    switch (type) {
-      case 'main': return 'Ana aydınlatma';
-      case 'desk': return 'Masa ışığı';
-      case 'bed': return 'Yatak ışığı';
-      case 'bathroom': return 'Banyo ışığı';
-      default: return 'Işık';
-    }
-  }
+  // Aktif kullanıcıları görüntüleme diyalogu
+  Future<void> _showActiveUsersDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Odadaki Aktif Oturumlar'),
+        content: SizedBox(
+          width: double.maxFinite, // Dialog genişliğini ayarla
+          height: 300, // Yükseklik ekleyelim
+          child: FutureBuilder<List<QrSession?>>(
+            future: _getActiveUsersForRoom(_roomId),
+            builder: (context, snapshot) {
+              // Yüklenirken
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Aktif kullanıcılar yükleniyor...')
+                    ],
+                  ),
+                );
+              }
 
-  String _getDeviceName(String type) {
-    switch (type) {
-      case 'tv': return 'Televizyon';
-      case 'ac': return 'Klima';
-      default: return 'Cihaz';
-    }
+              // Hata durumu
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red, size: 48),
+                      SizedBox(height: 16),
+                      Text('Hata oluştu: ${snapshot.error}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Veri boşsa
+              final activeUsers = snapshot.data;
+              if (activeUsers == null || activeUsers.isEmpty) {
+                return Center(child: Text('Aktif oturum bulunamadı.'));
+              }
+
+              // Veri varsa
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: activeUsers.length,
+                itemBuilder: (context, index) {
+                  final userSession = activeUsers[index];
+                  if (userSession == null) return SizedBox.shrink(); // Null kontrolü
+
+                  bool isCurrentUser = userSession.sessionId == widget.sessionId;
+
+                  return ListTile(
+                    leading: Icon(isCurrentUser ? Icons.person_pin : Icons.person_outline),
+                    title: Text(isCurrentUser ? 'Siz (Bu Oturum)' : 'Diğer Kullanıcı'),
+                    subtitle: Text('Oturum ID: ...${userSession.sessionId.substring(userSession.sessionId.length - 6)}'),
+                    trailing: isCurrentUser
+                        ? null
+                        : IconButton(
+                      icon: Icon(Icons.logout, color: Colors.red),
+                      tooltip: 'Oturumu Sonlandır',
+                      onPressed: () async {
+                        bool confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Oturumu Sonlandır'),
+                            content: Text('Bu kullanıcının oturumunu sonlandırmak istediğinizden emin misiniz?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: Text('İptal')),
+                              TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Sonlandır', style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        ) ?? false;
+
+                        if (confirm) {
+                          Navigator.pop(context);
+                          await _terminateUserSession(userSession.sessionId);
+                          _showActiveUsersDialog(); // Listeyi yenilemek için tekrar aç
+                        }
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Kapat'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -391,16 +290,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Oda Yönetim Paneli'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Text('Oda Yönetim Paneli', style: TextStyle(color: Colors.blue)),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadRoomHistory,
+            icon: Icon(Icons.people, color: Colors.blue),
+            tooltip: 'Mevcut Kullanıcılar',
+            onPressed: _showActiveUsersDialog,
           ),
           IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
+            icon: Icon(Icons.settings, color: Colors.blue),
+            tooltip: 'Ayarlar',
+            onPressed: _showSettingsDialog, // NavigationService yerine dialog göster
+          ),
+          AnimatedBuilder(
+            animation: _isLoggingOut,
+            builder: (context, child) {
+              return IconButton(
+                icon: _isLoggingOut.value
+                    ? SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.red,
+                  ),
+                )
+                    : Icon(Icons.exit_to_app, color: Colors.red),
+                tooltip: 'Oturumu Sonlandır',
+                onPressed: _isLoggingOut.value
+                    ? null
+                    : () async {
+                  _isLoggingOut.value = true;
+                  try {
+                    // Oturumu sonlandırma işlemi
+                    await _terminateUserSession(widget.sessionId);
+
+                    // NavigationService'deki updateAuthState metodunu kullanarak oturum bilgilerini sıfırla
+                    ref.read(navigationServiceProvider).updateAuthState(
+                        isAuthenticated: false,
+                        roomId: null,
+                        sessionId: null);
+
+                    if (mounted) {
+                      // Ana sayfaya yönlendir
+                      ref.read(navigationServiceProvider).navigateToHome();
+                    }
+                  } finally {
+                    if (mounted) {
+                      _isLoggingOut.value = false;
+                    }
+                  }
+                },
+              );
             },
           ),
         ],
@@ -409,265 +353,395 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onRefresh: _loadRoomHistory,
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Karşılama mesajı
-                Text(
-                  'Hoş geldiniz, $_userName',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Oda Durumu: ${_isRoomOccupied ? "Dolu" : "Boş"} | Mod: $_roomMode',
-                  style: TextStyle(fontSize: 16),
-                ),
-                SizedBox(height: 24),
-
-                // Canlı sensör verileri
-                Row(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 1200),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: RoomStatusCard(
-                        title: 'Sıcaklık',
-                        value: '${_currentTemperature.toStringAsFixed(1)}°C',
-                        icon: Icons.thermostat,
-                        color: _getSensorColor(_currentTemperature, 18, 25),
+                    // Karşılama ve durum alanı - Web için uyarlandı
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Hoş geldiniz, $_userName',
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            width: 60,
+                            height: 4,
+                            color: Colors.blue,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Oda Durumu: ${_isRoomOccupied ? "Dolu" : "Boş"} | Mod: $_roomMode',
+                            style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: RoomStatusCard(
-                        title: 'Nem',
-                        value: '${_currentHumidity.toStringAsFixed(1)}%',
-                        icon: Icons.water_drop,
-                        color: _getSensorColor(_currentHumidity, 40, 60),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: RoomStatusCard(
-                        title: 'Gaz Seviyesi',
-                        value: '$_currentGasLevel/10',
-                        icon: Icons.cloud,
-                        color: _getGasColor(_currentGasLevel),
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: RoomStatusCard(
-                        title: 'Kart Durumu',
-                        value: _isCardInserted ? 'Takılı' : 'Takılı Değil',
-                        icon: Icons.credit_card,
-                        color: _isCardInserted ? Colors.green : Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 24),
+                    SizedBox(height: 24),
 
-                // YENİ: Oda Kontrol Bölümü
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    // Canlı sensör verileri - Web benzeri responsive grid
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 16,
+                      runSpacing: 16,
                       children: [
-                        Text(
-                          'Oda Kontrolleri',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        SizedBox(
+                          width: 280,
+                          child: RoomStatusCard(
+                            title: 'Sıcaklık',
+                            value: '${_currentTemperature.toStringAsFixed(1)}°C',
+                            icon: Icons.thermostat,
+                            color: _getSensorColor(_currentTemperature, 18, 25),
+                          ),
                         ),
-                        SizedBox(height: 16),
-
-                        // Aydınlatma Kontrolleri
-                        Text('Aydınlatma', style: TextStyle(fontWeight: FontWeight.bold)),
-                        SwitchListTile(
-                          title: Text('Ana Aydınlatma'),
-                          value: _mainLightOn,
-                          secondary: Icon(Icons.lightbulb, color: _mainLightOn ? Colors.yellow : Colors.grey),
-                          onChanged: (value) => _toggleLight('main', value),
+                        SizedBox(
+                          width: 280,
+                          child: RoomStatusCard(
+                            title: 'Nem',
+                            value: '${_currentHumidity.toStringAsFixed(1)}%',
+                            icon: Icons.water_drop,
+                            color: _getSensorColor(_currentHumidity, 40, 60),
+                          ),
                         ),
-                        SwitchListTile(
-                          title: Text('Masa Işığı'),
-                          value: _deskLightOn,
-                          secondary: Icon(Icons.desk, color: _deskLightOn ? Colors.yellow : Colors.grey),
-                          onChanged: (value) => _toggleLight('desk', value),
+                        SizedBox(
+                          width: 280,
+                          child: RoomStatusCard(
+                            title: 'Gaz Seviyesi',
+                            value: '$_currentGasLevel/10',
+                            icon: Icons.cloud,
+                            color: _getGasColor(_currentGasLevel),
+                          ),
                         ),
-                        SwitchListTile(
-                          title: Text('Yatak Işığı'),
-                          value: _bedLightOn,
-                          secondary: Icon(Icons.bed, color: _bedLightOn ? Colors.yellow : Colors.grey),
-                          onChanged: (value) => _toggleLight('bed', value),
-                        ),
-                        SwitchListTile(
-                          title: Text('Banyo Işığı'),
-                          value: _bathroomLightOn,
-                          secondary: Icon(Icons.bathroom, color: _bathroomLightOn ? Colors.yellow : Colors.grey),
-                          onChanged: (value) => _toggleLight('bathroom', value),
-                        ),
-
-                        Divider(height: 32),
-
-                        // Cihaz Kontrolleri
-                        Text('Cihazlar', style: TextStyle(fontWeight: FontWeight.bold)),
-                        SwitchListTile(
-                          title: Text('Televizyon'),
-                          value: _tvOn,
-                          secondary: Icon(Icons.tv, color: _tvOn ? Colors.blue : Colors.grey),
-                          onChanged: (value) => _toggleDevice('tv', value),
-                        ),
-                        SwitchListTile(
-                          title: Text('Klima'),
-                          value: _acOn,
-                          secondary: Icon(Icons.ac_unit, color: _acOn ? Colors.blue : Colors.grey),
-                          onChanged: (value) => _toggleDevice('ac', value),
-                        ),
-
-                        Divider(height: 32),
-
-                        // Hizmet Butonları
-                        Text('Hizmetler', style: TextStyle(fontWeight: FontWeight.bold)),
-                        SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: _showCleaningRequestDialog,
-                              icon: Icon(Icons.cleaning_services),
-                              label: Text('Temizlik\nTalep Et'),
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              ),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: _showReceptionMessageDialog,
-                              icon: Icon(Icons.message),
-                              label: Text('Resepsiyona\nMesaj Gönder'),
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              ),
-                            ),
-                          ],
+                        SizedBox(
+                          width: 280,
+                          child: RoomStatusCard(
+                            title: 'Kart Durumu',
+                            value: _isCardInserted ? 'Takılı' : 'Takılı Değil',
+                            icon: Icons.credit_card,
+                            color: _isCardInserted ? Colors.green : Colors.red,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ),
+                    SizedBox(height: 24),
 
-                SizedBox(height: 24),
+                    // Oda Kontrol Bölümü - Web için uyarlandı
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.room_preferences, color: Colors.blue, size: 28),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Oda Kontrolleri',
+                                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 24),
 
-                // Sensör grafikleri
-                Text(
-                  'Sıcaklık Grafiği',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Container(
-                  height: 200,
-                  child: SensorChart(
-                    data: _temperatureHistory,
-                    color: Colors.orange,
-                    label: 'Sıcaklık (°C)',
-                  ),
-                ),
-                SizedBox(height: 24),
+                            // Aydınlatma ve Cihaz Kontrolleri yan yana - Web için responsive
+                            LayoutBuilder(
+                                builder: (context, constraints) {
+                                  if (constraints.maxWidth > 800) {
+                                    // Geniş ekran - yan yana
+                                    return Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Aydınlatma Kontrolleri
+                                        Expanded(
+                                          child: _buildLightingControls(),
+                                        ),
+                                        SizedBox(width: 24),
+                                        // Cihaz Kontrolleri
+                                        Expanded(
+                                          child: _buildDeviceControls(),
+                                        ),
+                                      ],
+                                    );
+                                  } else {
+                                    // Dar ekran - alt alta
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildLightingControls(),
+                                        SizedBox(height: 24),
+                                        _buildDeviceControls(),
+                                      ],
+                                    );
+                                  }
+                                }
+                            ),
 
-                Text(
-                  'Nem Grafiği',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Container(
-                  height: 200,
-                  child: SensorChart(
-                    data: _humidityHistory,
-                    color: Colors.blue,
-                    label: 'Nem (%)',
-                  ),
-                ),
-                SizedBox(height: 24),
+                            Divider(height: 40, thickness: 1),
 
-                // Son olaylar
-                Text(
-                  'Son Olaylar',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            // Hizmet Butonları - Web için uyarlandı
+                            Text(
+                              'Hizmetler',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: _showCleaningRequestDialog,
+                                  icon: Icon(Icons.cleaning_services),
+                                  label: Text('Temizlik Talep Et'),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                    textStyle: TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: _showReceptionMessageDialog,
+                                  icon: Icon(Icons.message),
+                                  label: Text('Resepsiyona Mesaj Gönder'),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                    textStyle: TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 32),
+
+                    // Sensör grafikleri - Web için uyarlandı
+                    LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxWidth > 900) {
+                            // Geniş ekran - yan yana grafikler
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildTemperatureChart(),
+                                ),
+                                SizedBox(width: 24),
+                                Expanded(
+                                  child: _buildHumidityChart(),
+                                ),
+                              ],
+                            );
+                          } else {
+                            // Dar ekran - alt alta grafikler
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildTemperatureChart(),
+                                SizedBox(height: 32),
+                                _buildHumidityChart(),
+                              ],
+                            );
+                          }
+                        }
+                    ),
+
+                    SizedBox(height: 32),
+
+                    // Son olaylar - Web için uyarlandı
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.history, color: Colors.blue, size: 28),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Son Olaylar',
+                                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            EventList(events: _eventHistory),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 8),
-                EventList(events: _eventHistory),
-              ],
+              ),
             ),
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          _showQRCodeDialog();
-        },
-        icon: Icon(Icons.qr_code),
-        label: Text('Yetkilendir'),
-      ),
     );
   }
 
-  // Sensör rengi belirle
-  Color _getSensorColor(double value, double min, double max) {
-    if (value < min) return Colors.blue;
-    if (value > max) return Colors.red;
-    return Colors.green;
-  }
-
-  // Gaz seviyesi rengi belirle
-  Color _getGasColor(int value) {
-    if (value <= 2) return Colors.green;
-    if (value <= 5) return Colors.orange;
-    return Colors.red;
-  }
-
-  // QR Kod diyalogu göster
-  void _showQRCodeDialog() {
-    // QR kod gösterme diyalogu - gerçek uygulamada QR kod oluşturma eklenecek
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Yetkilendirme QR Kodu'),
-        content: Container(
-          height: 300,
-          width: 300,
-          child: Center(
-            child: Image.network(
-              'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${Uri.encodeComponent(_roomId)}',
-              fit: BoxFit.contain,
-            ),
+  // Aydınlatma kontrolleri widget'ı
+  Widget _buildLightingControls() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+            'Aydınlatma',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        SizedBox(height: 8),
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: Text('Ana Aydınlatma'),
+                value: _mainLightOn,
+                secondary: Icon(Icons.lightbulb, color: _mainLightOn ? Colors.yellow : Colors.grey),
+                onChanged: (value) => _toggleLight('main', value),
+              ),
+              Divider(height: 1),
+              SwitchListTile(
+                title: Text('Masa Işığı'),
+                value: _deskLightOn,
+                secondary: Icon(Icons.desk, color: _deskLightOn ? Colors.yellow : Colors.grey),
+                onChanged: (value) => _toggleLight('desk', value),
+              ),
+              Divider(height: 1),
+              SwitchListTile(
+                title: Text('Yatak Işığı'),
+                value: _bedLightOn,
+                secondary: Icon(Icons.bed, color: _bedLightOn ? Colors.yellow : Colors.grey),
+                onChanged: (value) => _toggleLight('bed', value),
+              ),
+              Divider(height: 1),
+              SwitchListTile(
+                title: Text('Banyo Işığı'),
+                value: _bathroomLightOn,
+                secondary: Icon(Icons.bathroom, color: _bathroomLightOn ? Colors.yellow : Colors.grey),
+                onChanged: (value) => _toggleLight('bathroom', value),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text('Kapat'),
+      ],
+    );
+  }
+
+  // Cihaz kontrolleri widget'ı
+  Widget _buildDeviceControls() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+            'Cihazlar',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        SizedBox(height: 8),
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: Text('Televizyon'),
+                value: _tvOn,
+                secondary: Icon(Icons.tv, color: _tvOn ? Colors.blue : Colors.grey),
+                onChanged: (value) => _toggleDevice('tv', value),
+              ),
+              Divider(height: 1),
+              SwitchListTile(
+                title: Text('Klima'),
+                value: _acOn,
+                secondary: Icon(Icons.ac_unit, color: _acOn ? Colors.blue : Colors.grey),
+                onChanged: (value) => _toggleDevice('ac', value),
+              ),
+            ],
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  // Sıcaklık grafiği widget'ı
+  Widget _buildTemperatureChart() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Sıcaklık Grafiği',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: SensorChart(
+                data: _temperatureHistory,
+                color: Colors.orange,
+                label: 'Sıcaklık (°C)',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _temperatureSub.cancel();
-    _humiditySub.cancel();
-    _gasSub.cancel();
-    _distanceSub.cancel();
-    _cardSub.cancel();
-    _eventSub.cancel();
-    super.dispose();
+  // Nem grafiği widget'ı
+  Widget _buildHumidityChart() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Nem Grafiği',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: SensorChart(
+                data: _humidityHistory,
+                color: Colors.blue,
+                label: 'Nem (%)',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
