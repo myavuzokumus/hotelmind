@@ -398,7 +398,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                       runSpacing: 16,
                       children: [
                         SizedBox(
-                          width: 280,
+                          width: MediaQuery.of(context).size.width > 1200
+                        ? 280 // Geniş ekranlarda sabit genişlik
+                        : 218,
                           child: RoomStatusCard(
                             title: 'Sıcaklık',
                             value: '${_currentTemperature.toStringAsFixed(1)}°C',
@@ -407,7 +409,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                           ),
                         ),
                         SizedBox(
-                          width: 280,
+                          width: MediaQuery.of(context).size.width > 1200
+                              ? 280 // Geniş ekranlarda sabit genişlik
+                              : 218,
                           child: RoomStatusCard(
                             title: 'Nem',
                             value: '${_currentHumidity.toStringAsFixed(1)}%',
@@ -416,7 +420,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                           ),
                         ),
                         SizedBox(
-                          width: 280,
+                          width: MediaQuery.of(context).size.width > 600
+                              ? 280 // Geniş ekranlarda sabit genişlik
+                              : 218,
                           child: RoomStatusCard(
                             title: 'Gaz Seviyesi',
                             value: '$_currentGasLevel/10',
@@ -425,7 +431,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                           ),
                         ),
                         SizedBox(
-                          width: 280,
+                          width: MediaQuery.of(context).size.width > 600
+                              ? 280 // Geniş ekranlarda sabit genişlik
+                              : 218,
                           child: RoomStatusCard(
                             title: 'Kart Durumu',
                             value: _isCardInserted ? 'Takılı' : 'Takılı Değil',
@@ -506,7 +514,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                             Wrap(
                               spacing: 16,
                               runSpacing: 16,
-                              alignment: WrapAlignment.center,
+                              alignment: WrapAlignment.start,
                               children: [
                                 ElevatedButton.icon(
                                   onPressed: _showCleaningRequestDialog,

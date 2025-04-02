@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotelmind/app_scaffold.dart';
 import 'package:hotelmind/services/navigation_service.dart';
-import 'package:hotelmind/widgets/developer_drawer.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -31,15 +30,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  void _showDeveloperConsole() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DeveloperConsoleSheet(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,6 +53,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
+                      textAlign: TextAlign.center,
                       'Akıllı Oda Yönetimi',
                       style: TextStyle(
                         fontSize: 36,

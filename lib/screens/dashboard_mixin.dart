@@ -2,14 +2,14 @@ part of 'dashboard_screen.dart';
 
 mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
-  late final SensorService _sensorService;
   final RoomAutomationService _roomService = RoomAutomationService();
 
   final ValueNotifier<bool> _isLoggingOut = ValueNotifier<bool>(false);
   bool _isLoading = true;
   late String _roomId;
   late String _currentSessionId;
-  String _userName = 'Misafir';
+  late final SensorService _sensorService;
+  final String _userName = 'Misafir';
 
   // Sensör verileri listeleri
   final List<double> _temperatureHistory = [];
@@ -372,6 +372,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
     _cardSub.cancel();
     _eventSub.cancel();
     _isLoggingOut.dispose();
+    _sensorService.dispose();
     super.dispose();
   }
 

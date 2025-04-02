@@ -129,51 +129,109 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> with WidgetsBindingOb
     final roomId = ref.watch(roomIdProvider);
     final sessionId = ref.watch(sessionIdProvider);
     final selectedIndex = ref.watch(selectedTabIndexProvider);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth > 600; // Tablet/Desktop için eşik değeri
 
-    // Kullanıcı giriş yaptıysa, dashboard ekranını güncelle
+    // Dashboard ekranını güncelle
     if (isAuthenticated && roomId != null && sessionId != null) {
-      // Dashboard'u yalnızca değişiklik olduğunda güncelle
       if (_screens[2] is! DashboardScreen ||
           (_screens[2] as DashboardScreen).roomId != roomId ||
           (_screens[2] as DashboardScreen).sessionId != sessionId) {
         _screens[2] = DashboardScreen(roomId: roomId, sessionId: sessionId);
       }
     } else {
-      // Boş container kalsın, bu sekme kullanılmayacak
       _screens[2] = Container();
     }
 
-    // Eğer şu anda QR sekmesindeyse ve QR henüz yüklenmemişse, yükle
+    // QR sekmesini kontrol et ve gerekirse yükle
     if (selectedIndex == 1 && !ref.read(qrScannerLoadedProvider)) {
       _loadQRScanner();
     }
 
-    return Scaffold(
-      bottomNavigationBar: Container(
-        height: 40,
-        color: Colors.grey[200],
-        child: InkWell(
-          onTap: _showDeveloperConsole,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.code, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Geliştirici Konsolu',
-                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-              ),
-            ],
-          ),
-        ),
+    // NavigationRail için öğeler (geniş ekran)
+    final navigationRailItems = [
+      const NavigationRailDestination(
+        icon: Icon(Icons.home_outlined),
+        selectedIcon: Icon(Icons.home),
+        label: Text('Ana Sayfa'),
       ),
-      body: Row(
+      NavigationRailDestination(
+        icon: Icon(isAuthenticated ? Icons.dashboard_outlined : Icons.qr_code_scanner_outlined),
+        selectedIcon: Icon(isAuthenticated ? Icons.dashboard : Icons.qr_code_scanner),
+        label: Text(isAuthenticated ? 'Panel' : 'QR Tarayıcı'),
+      ),
+    ];
+
+    // BottomNavigationBar için öğeler (küçük ekran)
+    final bottomNavItems = [
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.home_outlined),
+        activeIcon: Icon(Icons.home),
+        label: 'Ana Sayfa',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(isAuthenticated ? Icons.dashboard_outlined : Icons.qr_code_scanner_outlined),
+        activeIcon: Icon(isAuthenticated ? Icons.dashboard : Icons.qr_code_scanner),
+        label: isAuthenticated ? 'Panel' : 'QR Tarayıcı',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.admin_panel_settings_outlined),
+        activeIcon: Icon(Icons.admin_panel_settings),
+        label: 'Yetkili',
+      ),
+    ];
+
+    return Scaffold(
+      // Küçük ekranlar için bottomNavigationBar ekle
+      bottomNavigationBar: !isLargeScreen
+          ? Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BottomNavigationBar(
+            currentIndex: selectedIndex == 3 ? 2 : (selectedIndex == 2 && isAuthenticated ? 1 : selectedIndex),
+            items: bottomNavItems,
+            onTap: (index) {
+              if (index == 2) {
+                // Admin ekranına git
+                _updateTabIndex(3);
+              } else if (index == 1 && isAuthenticated) {
+                // Dashboard'a git
+                _updateTabIndex(2);
+              } else {
+                _updateTabIndex(index);
+              }
+            },
+          ),
+          // Geliştirici konsolu butonu
+          Container(
+            height: 40,
+            color: Colors.grey[200],
+            child: InkWell(
+              onTap: _showDeveloperConsole,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.code, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Geliştirici Konsolu',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      )
+          : null,
+      body: isLargeScreen
+      // Geniş ekran layout'u (NavigationRail)
+          ? Row(
         children: [
           // NavigationRail
           NavigationRail(
             selectedIndex: selectedIndex == 2 && isAuthenticated ? 1 : (selectedIndex < 2 ? selectedIndex : null),
             onDestinationSelected: (int index) {
-              // Oturum durumuna göre index belirle
               if (index == 1 && isAuthenticated) {
                 _updateTabIndex(2); // Dashboard'a git
               } else {
@@ -181,7 +239,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> with WidgetsBindingOb
               }
             },
             labelType: NavigationRailLabelType.selected,
-            // Logo üstte
             leading: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Column(
@@ -194,9 +251,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> with WidgetsBindingOb
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Center(
-                      child: Image(
-                          image: AssetImage('assets/icon/hotelmind_logo.png')
-                      ),
+                      child: Image(image: AssetImage('assets/icon/hotelmind_logo.png')),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -208,7 +263,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> with WidgetsBindingOb
                 ],
               ),
             ),
-            // Admin butonu en altta
             trailing: Expanded(
               child: Align(
                 alignment: Alignment.bottomCenter,
@@ -236,32 +290,49 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> with WidgetsBindingOb
                 ),
               ),
             ),
-            destinations: [
-              // Ana Sayfa butonu
-              const NavigationRailDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: Text('Ana Sayfa'),
-              ),
-              // Kullanıcı durumuna göre QR veya Panel butonu
-              NavigationRailDestination(
-                icon: Icon(isAuthenticated ? Icons.dashboard_outlined : Icons.qr_code_scanner_outlined),
-                selectedIcon: Icon(isAuthenticated ? Icons.dashboard : Icons.qr_code_scanner),
-                label: Text(isAuthenticated ? 'Panel' : 'QR Tarayıcı'),
-              ),
-            ],
+            destinations: navigationRailItems,
             extended: false,
           ),
-          // Dikey çizgi
           const VerticalDivider(thickness: 1, width: 1),
-          // Sayfa içeriği - IndexedStack sayesinde sayfalar hafızada kalır
           Expanded(
-            child: IndexedStack(
-              index: selectedIndex,
-              children: _screens,
+            child: Stack(
+              children: [
+                IndexedStack(
+                  index: selectedIndex,
+                  children: _screens,
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    height: 40,
+                    color: Colors.grey[200],
+                    child: InkWell(
+                      onTap: _showDeveloperConsole,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.code, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Geliştirici Konsolu',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      )
+      // Dar ekran layout'u (Sadece içerik)
+          : IndexedStack(
+        index: selectedIndex,
+        children: _screens,
       ),
     );
   }
