@@ -4,18 +4,67 @@ import { fileURLToPath } from "node:url";
 import { defineFunction } from "@aws-amplify/backend";
 import { DockerImage, Duration } from "aws-cdk-lib";
 import { Code, Function, Runtime } from "aws-cdk-lib/aws-lambda";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 const functionDir = path.dirname(fileURLToPath(import.meta.url));
+const isWindows = process.platform === 'win32';
 
 export const verifyQrFunctionHandler = defineFunction(
-  (scope) =>
-    new Function(scope, "verify-qr", {
+  (scope) => {
+    const lambdaFunction = new Function(scope, "verify-qr", {
       handler: "index.handler",
-      runtime: Runtime.PYTHON_3_12, // or any other python version
-      timeout: Duration.seconds(20), //  default is 3 seconds
-      code: Code.fromAsset("./amplify/functions/verify-qr"),
-    }),
-    {
-      resourceGroupName: "auth" // Optional: Groups this function with auth resource
-    }
+      runtime: Runtime.PYTHON_3_12,
+      timeout: Duration.seconds(20),
+      environment: {
+        RATE_LIMIT_COUNT: "10",
+        RATE_LIMIT_WINDOW: "60",
+        QR_SECRET_KEY: "a69836475cdbb13d9e3fb15d6d2a547ee11f0d6d52d7c1b43bc9b0e965502357",
+        QR_SESSIONS_TABLE: "QrSession-23zg6kw7jvc7vd6hacyznny2w4-NONE",
+        QR_RATE_LIMIT_TABLE: "QrRateLimit-23zg6kw7jvc7vd6hacyznny2w4-NONE"
+      },
+      code: Code.fromAsset(functionDir, {
+        bundling: {
+          image: DockerImage.fromRegistry("public.ecr.aws/lambda/python:3.12"),
+          local: {
+            tryBundle(outputDir: string) {
+              const pythonCmd = isWindows ? 'python3.12' : 'python';
+
+              execSync(
+                `${pythonCmd} -m pip install -r ${path.join(functionDir, "requirements.txt")} -t ${path.join(outputDir)} --platform manylinux2014_x86_64 --only-binary=:all:`
+              );
+
+              if (isWindows) {
+                const sourceDir = functionDir + (functionDir.endsWith('\\') ? '' : '\\');
+                execSync(`xcopy "${sourceDir}*" "${outputDir}" /E /I /Y`);
+              } else {
+                execSync(`cp -r ${functionDir}/* ${outputDir}`);
+              }
+
+              return true;
+            },
+          },
+        },
+      }),
+    });
+
+    // DynamoDB izinleri ekleme - doğru yaklaşım
+    lambdaFunction.addToRolePolicy(new PolicyStatement({
+      actions: [
+        'dynamodb:Query',
+        'dynamodb:PutItem',
+        'dynamodb:GetItem',
+        'dynamodb:Scan',
+        'dynamodb:DeleteItem',
+      ],
+      resources: [
+        "arn:aws:dynamodb:eu-central-1:471112835770:table/QrRateLimit*",
+        "arn:aws:dynamodb:eu-central-1:471112835770:table/QrSession*"
+      ]
+    }));
+
+    return lambdaFunction;
+  },
+  {
+    resourceGroupName: "auth"
+  }
 );
