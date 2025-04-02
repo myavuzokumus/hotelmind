@@ -1,16 +1,16 @@
+// lib/widgets/debug_log_display.dart
 import 'package:flutter/material.dart';
-import '../services/debug_log_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hotelmind/services/debug_log_provider.dart';
 
-class DebugLogDisplay extends StatelessWidget {
+class DebugLogDisplay extends ConsumerWidget {
   final bool expanded;
 
-  const DebugLogDisplay({Key? key, this.expanded = false}) : super(key: key);
+  const DebugLogDisplay({super.key, this.expanded = false});
 
   @override
-  Widget build(BuildContext context) {
-    final logProvider = Provider.of<DebugLogProvider>(context);
-    final logs = logProvider.logs;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logs = ref.watch(debugLogProvider);
 
     return Container(
       constraints: BoxConstraints(
@@ -27,24 +27,25 @@ class DebugLogDisplay extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Debug Logs',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+          if (!expanded)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Debug Logs',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.delete, color: Colors.white, size: 20),
-                onPressed: () => logProvider.clear(),
-                tooltip: 'Logları Temizle',
-              ),
-            ],
-          ),
-          Divider(color: Colors.grey),
+                IconButton(
+                  icon: Icon(Icons.delete, color: Colors.white, size: 20),
+                  onPressed: () => ref.read(debugLogProvider.notifier).clear(),
+                  tooltip: 'Logları Temizle',
+                ),
+              ],
+            ),
+          if (!expanded) Divider(color: Colors.grey),
           Expanded(
             child: logs.isEmpty
                 ? Center(

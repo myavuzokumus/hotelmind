@@ -1,28 +1,33 @@
-import 'package:flutter/material.dart';
+// lib/providers/debug_log_provider.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DebugLogProvider extends ChangeNotifier {
-  final List<String> _logs = [];
+class DebugLogNotifier extends StateNotifier<List<String>> {
   static const int maxLogEntries = 100;
 
-  List<String> get logs => List.unmodifiable(_logs);
+  DebugLogNotifier() : super([]);
 
   void log(String message) {
-    // Zaman damgası ekle
     final timestamp = DateTime.now().toString().substring(11, 19);
     final logEntry = "[$timestamp] $message";
 
-    _logs.add(logEntry);
+    final updatedLogs = [...state, logEntry];
 
     // Log listesi çok uzarsa eski kayıtları temizle
-    if (_logs.length > maxLogEntries) {
-      _logs.removeRange(0, _logs.length - maxLogEntries);
+    if (updatedLogs.length > maxLogEntries) {
+      state = updatedLogs.sublist(updatedLogs.length - maxLogEntries);
+    } else {
+      state = updatedLogs;
     }
-
-    notifyListeners();
   }
 
   void clear() {
-    _logs.clear();
-    notifyListeners();
+    state = [];
   }
 }
+
+final debugLogProvider = StateNotifierProvider<DebugLogNotifier, List<String>>(
+      (ref) => DebugLogNotifier(),
+);
+
+// Geliştirici modu için provider
+final developerModeProvider = StateProvider<bool>((ref) => false);
