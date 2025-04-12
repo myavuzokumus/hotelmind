@@ -29,9 +29,9 @@ const amplifyConfig = r'''{
     "url": "https://ltlb4j7xizbchpvmimdhvvul24.appsync-api.eu-central-1.amazonaws.com/graphql",
     "aws_region": "eu-central-1",
     "api_key": "da2-4e5vjx2clzbebbl3twe62rznpu",
-    "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
+    "default_authorization_type": "API_KEY",
     "authorization_types": [
-      "API_KEY",
+      "AMAZON_COGNITO_USER_POOLS",
       "AWS_IAM"
     ],
     "model_introspection": {
@@ -51,13 +51,6 @@ const amplifyConfig = r'''{
               "name": "roomId",
               "isArray": false,
               "type": "String",
-              "isRequired": true,
-              "attributes": []
-            },
-            "usedAt": {
-              "name": "usedAt",
-              "isArray": false,
-              "type": "Int",
               "isRequired": true,
               "attributes": []
             },
@@ -136,13 +129,6 @@ const amplifyConfig = r'''{
         "SensorData": {
           "name": "SensorData",
           "fields": {
-            "id": {
-              "name": "id",
-              "isArray": false,
-              "type": "ID",
-              "isRequired": true,
-              "attributes": []
-            },
             "roomId": {
               "name": "roomId",
               "isArray": false,
@@ -150,54 +136,15 @@ const amplifyConfig = r'''{
               "isRequired": true,
               "attributes": []
             },
-            "timestamp": {
-              "name": "timestamp",
-              "isArray": false,
-              "type": "Int",
-              "isRequired": true,
-              "attributes": []
-            },
-            "temperature": {
-              "name": "temperature",
-              "isArray": false,
-              "type": "Float",
-              "isRequired": true,
-              "attributes": []
-            },
-            "humidity": {
-              "name": "humidity",
-              "isArray": false,
-              "type": "Float",
-              "isRequired": true,
-              "attributes": []
-            },
-            "gasLevel": {
-              "name": "gasLevel",
-              "isArray": false,
-              "type": "Int",
-              "isRequired": true,
-              "attributes": []
-            },
-            "distance": {
-              "name": "distance",
-              "isArray": false,
-              "type": "Float",
-              "isRequired": true,
-              "attributes": []
-            },
-            "occupied": {
-              "name": "occupied",
-              "isArray": false,
-              "type": "Boolean",
-              "isRequired": true,
-              "attributes": []
-            },
-            "cardInserted": {
-              "name": "cardInserted",
-              "isArray": false,
-              "type": "Boolean",
-              "isRequired": true,
-              "attributes": []
+            "payload": {
+              "name": "payload",
+              "isArray": true,
+              "type": {
+                "nonModel": "SensorDataItem"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
             },
             "createdAt": {
               "name": "createdAt",
@@ -224,9 +171,27 @@ const amplifyConfig = r'''{
               "properties": {}
             },
             {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "roomId"
+                ]
+              }
+            },
+            {
               "type": "auth",
               "properties": {
                 "rules": [
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
                   {
                     "allow": "private",
                     "operations": [
@@ -241,21 +206,14 @@ const amplifyConfig = r'''{
             }
           ],
           "primaryKeyInfo": {
-            "isCustomPrimaryKey": false,
-            "primaryKeyFieldName": "id",
+            "isCustomPrimaryKey": true,
+            "primaryKeyFieldName": "roomId",
             "sortKeyFieldNames": []
           }
         },
         "RoomEvent": {
           "name": "RoomEvent",
           "fields": {
-            "id": {
-              "name": "id",
-              "isArray": false,
-              "type": "ID",
-              "isRequired": true,
-              "attributes": []
-            },
             "roomId": {
               "name": "roomId",
               "isArray": false,
@@ -263,33 +221,15 @@ const amplifyConfig = r'''{
               "isRequired": true,
               "attributes": []
             },
-            "eventType": {
-              "name": "eventType",
-              "isArray": false,
-              "type": "String",
-              "isRequired": true,
-              "attributes": []
-            },
-            "timestamp": {
-              "name": "timestamp",
-              "isArray": false,
-              "type": "Int",
-              "isRequired": true,
-              "attributes": []
-            },
-            "description": {
-              "name": "description",
-              "isArray": false,
-              "type": "String",
-              "isRequired": true,
-              "attributes": []
-            },
-            "resolved": {
-              "name": "resolved",
-              "isArray": false,
-              "type": "Boolean",
-              "isRequired": true,
-              "attributes": []
+            "payload": {
+              "name": "payload",
+              "isArray": true,
+              "type": {
+                "nonModel": "EventItem"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": false
             },
             "createdAt": {
               "name": "createdAt",
@@ -316,9 +256,27 @@ const amplifyConfig = r'''{
               "properties": {}
             },
             {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "roomId"
+                ]
+              }
+            },
+            {
               "type": "auth",
               "properties": {
                 "rules": [
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
                   {
                     "allow": "private",
                     "operations": [
@@ -333,21 +291,14 @@ const amplifyConfig = r'''{
             }
           ],
           "primaryKeyInfo": {
-            "isCustomPrimaryKey": false,
-            "primaryKeyFieldName": "id",
+            "isCustomPrimaryKey": true,
+            "primaryKeyFieldName": "roomId",
             "sortKeyFieldNames": []
           }
         },
         "UserPreference": {
           "name": "UserPreference",
           "fields": {
-            "id": {
-              "name": "id",
-              "isArray": false,
-              "type": "ID",
-              "isRequired": true,
-              "attributes": []
-            },
             "roomId": {
               "name": "roomId",
               "isArray": false,
@@ -355,11 +306,48 @@ const amplifyConfig = r'''{
               "isRequired": true,
               "attributes": []
             },
-            "preferences": {
-              "name": "preferences",
+            "preferredTemperature": {
+              "name": "preferredTemperature",
               "isArray": false,
-              "type": "AWSJSON",
-              "isRequired": true,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "preferredHumidity": {
+              "name": "preferredHumidity",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "autoClimate": {
+              "name": "autoClimate",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "automaticLights": {
+              "name": "automaticLights",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "voiceReports": {
+              "name": "voiceReports",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "roomMode": {
+              "name": "roomMode",
+              "isArray": false,
+              "type": {
+                "enum": "UserPreferenceRoomMode"
+              },
+              "isRequired": false,
               "attributes": []
             },
             "createdAt": {
@@ -387,14 +375,20 @@ const amplifyConfig = r'''{
               "properties": {}
             },
             {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "roomId"
+                ]
+              }
+            },
+            {
               "type": "auth",
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
+                    "allow": "public",
+                    "provider": "apiKey",
                     "operations": [
                       "create",
                       "update",
@@ -416,9 +410,117 @@ const amplifyConfig = r'''{
             }
           ],
           "primaryKeyInfo": {
-            "isCustomPrimaryKey": false,
-            "primaryKeyFieldName": "id",
+            "isCustomPrimaryKey": true,
+            "primaryKeyFieldName": "roomId",
             "sortKeyFieldNames": []
+          }
+        },
+        "RoomControl": {
+          "name": "RoomControl",
+          "fields": {
+            "roomId": {
+              "name": "roomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "controlType": {
+              "name": "controlType",
+              "isArray": false,
+              "type": {
+                "enum": "RoomControlControlType"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "controlName": {
+              "name": "controlName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastUpdated": {
+              "name": "lastUpdated",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "RoomControls",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "roomId",
+                  "controlName"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": true,
+            "primaryKeyFieldName": "roomId",
+            "sortKeyFieldNames": [
+              "controlName"
+            ]
           }
         },
         "QrRateLimit": {
@@ -512,9 +614,152 @@ const amplifyConfig = r'''{
           }
         }
       },
-      "enums": {},
-      "nonModels": {},
+      "enums": {
+        "UserPreferenceRoomMode": {
+          "name": "UserPreferenceRoomMode",
+          "values": [
+            "comfort",
+            "eco",
+            "away"
+          ]
+        },
+        "RoomControlControlType": {
+          "name": "RoomControlControlType",
+          "values": [
+            "light",
+            "device"
+          ]
+        }
+      },
+      "nonModels": {
+        "SensorDataItem": {
+          "name": "SensorDataItem",
+          "fields": {
+            "timestamp": {
+              "name": "timestamp",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "temperature": {
+              "name": "temperature",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "pressure": {
+              "name": "pressure",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "humidity": {
+              "name": "humidity",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "gasLevel": {
+              "name": "gasLevel",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "distance": {
+              "name": "distance",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "occupied": {
+              "name": "occupied",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "cardInserted": {
+              "name": "cardInserted",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "EventItem": {
+          "name": "EventItem",
+          "fields": {
+            "eventType": {
+              "name": "eventType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "timestamp": {
+              "name": "timestamp",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "description": {
+              "name": "description",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "resolved": {
+              "name": "resolved",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        }
+      },
       "queries": {
+        "RequestRoomControl": {
+          "name": "RequestRoomControl",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "roomId": {
+              "name": "roomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "controlType": {
+              "name": "controlType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "controlName": {
+              "name": "controlName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true
+            }
+          }
+        },
         "QrVerify": {
           "name": "QrVerify",
           "isArray": false,
@@ -523,6 +768,62 @@ const amplifyConfig = r'''{
           "arguments": {
             "name": {
               "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "FetchUserPreference": {
+          "name": "FetchUserPreference",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "roomId": {
+              "name": "roomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "SecretKey": {
+          "name": "SecretKey",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "FetchEventData": {
+          "name": "FetchEventData",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "roomId": {
+              "name": "roomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "FetchSensorData": {
+          "name": "FetchSensorData",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "roomId": {
+              "name": "roomId",
               "isArray": false,
               "type": "String",
               "isRequired": true
