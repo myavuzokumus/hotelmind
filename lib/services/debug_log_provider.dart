@@ -1,4 +1,4 @@
-// lib/providers/debug_log_provider.dart
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DebugLogNotifier extends StateNotifier<List<String>> {
@@ -9,6 +9,7 @@ class DebugLogNotifier extends StateNotifier<List<String>> {
   void log(String message) {
     final timestamp = DateTime.now().toString().substring(11, 19);
     final logEntry = "[$timestamp] $message";
+    safePrint(logEntry);
 
     final updatedLogs = [...state, logEntry];
 
@@ -25,8 +26,21 @@ class DebugLogNotifier extends StateNotifier<List<String>> {
   }
 }
 
+// Global log instance
+final DebugLogNotifier _globalLogNotifier = DebugLogNotifier();
+
+// Global log fonksiyonu
+void log(String message) {
+  _globalLogNotifier.log(message);
+}
+
+// Global clear fonksiyonu
+void clearLogs() {
+  _globalLogNotifier.clear();
+}
+
 final debugLogProvider = StateNotifierProvider<DebugLogNotifier, List<String>>(
-      (ref) => DebugLogNotifier(),
+      (ref) => _globalLogNotifier, // Aynı instance'ı provider'a da veriyoruz
 );
 
 // Geliştirici modu için provider
