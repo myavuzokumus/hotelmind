@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hotelmind/widgets/developer_drawer.dart';
 
+import '../services/debug_log_provider.dart';
 import '../services/room_automation_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -54,17 +55,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         if (preferences != null) {
-          _preferredTemperature = preferences['preferredTemperature'] ?? 22.0;
-          _preferredHumidity = preferences['preferredHumidity'] ?? 50.0;
-          _autoClimate = preferences['autoClimate'] ?? true;
-          _automaticLights = preferences['automaticLights'] ?? true;
-          _voiceReports = preferences['voiceReports'] ?? true;
-          _roomMode = preferences['roomMode'] ?? 'comfort';
+          _preferredTemperature = preferences['preferredTemperature'];
+          _preferredHumidity = preferences['preferredHumidity'];
+          _autoClimate = preferences['autoClimate'];
+          _automaticLights = preferences['automaticLights'];
+          _voiceReports = preferences['voiceReports'];
+          _roomMode = preferences['roomMode'].toString();
         }
         _isLoading = false;
       });
     } catch (e) {
-      print("Tercihler yüklenirken hata: $e");
+      log("Tercihler yüklenirken hata: $e");
       setState(() {
         _isLoading = false;
       });
@@ -92,11 +93,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final success = await _roomService.saveUserPreferences(_roomId, preferences);
 
-      if (success) {
-        // Aynı zamanda oda modunu da ayarla
-        await _roomService.setRoomMode(_roomId, _roomMode);
-      }
-
       setState(() {
         _isLoading = false;
       });
@@ -111,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           )
       );
     } catch (e) {
-      print("Tercihler kaydedilirken hata: $e");
+      log("Tercihler kaydedilirken hata: $e");
       setState(() {
         _isLoading = false;
       });
@@ -163,6 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       children: [
                         Text(
+                          textAlign: TextAlign.center,
                           'Kişisel Oda Tercihleri',
                           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
                         ),
