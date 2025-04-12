@@ -28,8 +28,9 @@ class QrSession extends amplify_core.Model {
   static const classType = const _QrSessionModelType();
   final String? _sessionId;
   final String? _roomId;
-  final int? _usedAt;
   final int? _expiry;
+  final amplify_core.TemporalDateTime? _createdAt;
+  final amplify_core.TemporalDateTime? _updatedAt;
 
   @override
   getInstanceType() => classType;
@@ -79,19 +80,6 @@ class QrSession extends amplify_core.Model {
     }
   }
   
-  int get usedAt {
-    try {
-      return _usedAt!;
-    } catch(e) {
-      throw amplify_core.AmplifyCodeGenModelException(
-          amplify_core.AmplifyExceptionMessages.codeGenRequiredFieldForceCastExceptionMessage,
-          recoverySuggestion:
-            amplify_core.AmplifyExceptionMessages.codeGenRequiredFieldForceCastRecoverySuggestion,
-          underlyingException: e.toString()
-          );
-    }
-  }
-  
   int get expiry {
     try {
       return _expiry!;
@@ -104,14 +92,21 @@ class QrSession extends amplify_core.Model {
           );
     }
   }
-
-  const QrSession._internal({required sessionId, required roomId, required usedAt, required expiry}): _sessionId = sessionId, _roomId = roomId, _usedAt = usedAt, _expiry = expiry;
   
-  factory QrSession({required String sessionId, required String roomId, required int usedAt, required int expiry}) {
+  amplify_core.TemporalDateTime? get createdAt {
+    return _createdAt;
+  }
+  
+  amplify_core.TemporalDateTime? get updatedAt {
+    return _updatedAt;
+  }
+  
+  const QrSession._internal({required sessionId, required roomId, required expiry, createdAt, updatedAt}): _sessionId = sessionId, _roomId = roomId, _expiry = expiry, _createdAt = createdAt, _updatedAt = updatedAt;
+  
+  factory QrSession({required String sessionId, required String roomId, required int expiry}) {
     return QrSession._internal(
       sessionId: sessionId,
       roomId: roomId,
-      usedAt: usedAt,
       expiry: expiry);
   }
   
@@ -125,7 +120,6 @@ class QrSession extends amplify_core.Model {
     return other is QrSession &&
       _sessionId == other._sessionId &&
       _roomId == other._roomId &&
-      _usedAt == other._usedAt &&
       _expiry == other._expiry;
   }
   
@@ -139,30 +133,28 @@ class QrSession extends amplify_core.Model {
     buffer.write("QrSession {");
     buffer.write("sessionId=" + "$_sessionId" + ", ");
     buffer.write("roomId=" + "$_roomId" + ", ");
-    buffer.write("usedAt=" + (_usedAt != null ? _usedAt!.toString() : "null") + ", ");
     buffer.write("expiry=" + (_expiry != null ? _expiry!.toString() : "null") + ", ");
+    buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
+    buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
     buffer.write("}");
     
     return buffer.toString();
   }
   
-  QrSession copyWith({String? roomId, int? usedAt, int? expiry}) {
+  QrSession copyWith({String? roomId, int? expiry}) {
     return QrSession._internal(
       sessionId: sessionId,
       roomId: roomId ?? this.roomId,
-      usedAt: usedAt ?? this.usedAt,
       expiry: expiry ?? this.expiry);
   }
   
   QrSession copyWithModelFieldValues({
     ModelFieldValue<String>? roomId,
-    ModelFieldValue<int>? usedAt,
     ModelFieldValue<int>? expiry
   }) {
     return QrSession._internal(
       sessionId: sessionId,
       roomId: roomId == null ? this.roomId : roomId.value,
-      usedAt: usedAt == null ? this.usedAt : usedAt.value,
       expiry: expiry == null ? this.expiry : expiry.value
     );
   }
@@ -170,24 +162,25 @@ class QrSession extends amplify_core.Model {
   QrSession.fromJson(Map<String, dynamic> json)  
     : _sessionId = json['sessionId'],
       _roomId = json['roomId'],
-      _usedAt = (json['usedAt'] as num?)?.toInt(),
-      _expiry = (json['expiry'] as num?)?.toInt();
+      _expiry = (json['expiry'] as num?)?.toInt(),
+      _createdAt = json['createdAt'] != null ? amplify_core.TemporalDateTime.fromString(json['createdAt']) : null,
+      _updatedAt = json['updatedAt'] != null ? amplify_core.TemporalDateTime.fromString(json['updatedAt']) : null;
   
   Map<String, dynamic> toJson() => {
-    'sessionId': _sessionId, 'roomId': _roomId, 'usedAt': _usedAt, 'expiry': _expiry
+    'sessionId': _sessionId, 'roomId': _roomId, 'expiry': _expiry, 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
   
   Map<String, Object?> toMap() => {
     'sessionId': _sessionId,
     'roomId': _roomId,
-    'usedAt': _usedAt,
     'expiry': _expiry,
+    'createdAt': _createdAt,
+    'updatedAt': _updatedAt
   };
 
   static final amplify_core.QueryModelIdentifier<QrSessionModelIdentifier> MODEL_IDENTIFIER = amplify_core.QueryModelIdentifier<QrSessionModelIdentifier>();
   static final SESSIONID = amplify_core.QueryField(fieldName: "sessionId");
   static final ROOMID = amplify_core.QueryField(fieldName: "roomId");
-  static final USEDAT = amplify_core.QueryField(fieldName: "usedAt");
   static final EXPIRY = amplify_core.QueryField(fieldName: "expiry");
   static var schema = amplify_core.Model.defineSchema(define: (amplify_core.ModelSchemaDefinition modelSchemaDefinition) {
     modelSchemaDefinition.name = "QrSession";
@@ -230,17 +223,24 @@ class QrSession extends amplify_core.Model {
     ));
     
     modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
-      key: QrSession.USEDAT,
-      isRequired: true,
-      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.int)
-    ));
-    
-    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.field(
       key: QrSession.EXPIRY,
       isRequired: true,
       ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.int)
     ));
-
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'createdAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
+    
+    modelSchemaDefinition.addField(amplify_core.ModelFieldDefinition.nonQueryField(
+      fieldName: 'updatedAt',
+      isRequired: false,
+      isReadOnly: true,
+      ofType: amplify_core.ModelFieldType(amplify_core.ModelFieldTypeEnum.dateTime)
+    ));
   });
 }
 
