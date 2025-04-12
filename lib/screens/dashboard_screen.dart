@@ -9,6 +9,7 @@ import 'package:hotelmind/screens/settings_screen.dart';
 import 'package:hotelmind/services/event_bus.dart';
 import 'package:hotelmind/services/navigation_service.dart';
 
+import '../services/debug_log_provider.dart';
 import '../services/room_automation_service.dart';
 import '../services/sensor_service.dart';
 import '../widgets/event_list.dart';
@@ -44,7 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
           clipBehavior: Clip.antiAlias, // Köşelerden taşan içeriği kırpmak için
           insetPadding: EdgeInsets.all(16), // Ekrandan uzaklık
           child: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.65, // Genişlik sınırlama
+            width: MediaQuery.of(context).size.width * 0.75, // Genişlik sınırlama
             child: SettingsScreen(roomId: _roomId, sessionId: _currentSessionId),
           ),
         );
