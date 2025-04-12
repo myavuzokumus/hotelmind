@@ -26,6 +26,9 @@ Future<void> _configureAmplify() async {
     final authPlugin = AmplifyAuthCognito();
     final apiPlugin = AmplifyAPI(options: APIPluginOptions(
       modelProvider: ModelProvider.instance,
+      subscriptionOptions: const GraphQLSubscriptionOptions(
+        retryOptions: RetryOptions(maxAttempts: 10),
+      ),
     ));
 
     // Add plugins to Amplify
