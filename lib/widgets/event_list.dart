@@ -59,7 +59,7 @@ class EventList extends StatelessWidget {
             itemCount: events.length,
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
-              final event = events[index];
+              final event = events[events.length - 1 - index];
               return _buildEventItem(context, event);
             },
           ),
@@ -71,7 +71,7 @@ class EventList extends StatelessWidget {
   Widget _buildEventItem(BuildContext context, Map<String, dynamic> event) {
     final eventType = event['type'] ?? event['eventType'] ?? 'UNKNOWN';
     final timestamp = event['timestamp'] != null
-        ? DateTime.fromMillisecondsSinceEpoch(event['timestamp'])
+        ? DateTime.fromMillisecondsSinceEpoch(event['timestamp']*1000)
         : DateTime.now();
     final String formattedTime = DateFormat('HH:mm:ss').format(timestamp);
     final String formattedDate = DateFormat('dd/MM/yyyy').format(timestamp);
@@ -123,7 +123,7 @@ class EventList extends StatelessWidget {
               margin: EdgeInsets.only(top: 4),
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 20),
