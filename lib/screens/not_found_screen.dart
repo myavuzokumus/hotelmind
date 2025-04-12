@@ -1,16 +1,17 @@
-// lib/screens/not_found_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hotelmind/services/navigation_service.dart';
 
-class NotFoundScreen extends StatelessWidget {
+class NotFoundScreen extends ConsumerWidget {
   final String message;
 
   const NotFoundScreen({
-    Key? key,
+    super.key,
     this.message = 'Aradığınız sayfa bulunamadı veya erişim izniniz yok.'
-  }) : super(key: key);
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sayfa Bulunamadı'),
@@ -47,7 +48,7 @@ class NotFoundScreen extends StatelessWidget {
               icon: const Icon(Icons.home),
               label: const Text('Ana Sayfaya Dön'),
               onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                ref.read(navigationServiceProvider).navigateToHome();
               },
             ),
           ],
