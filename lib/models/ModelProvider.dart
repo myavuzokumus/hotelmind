@@ -22,23 +22,31 @@
 import 'package:amplify_core/amplify_core.dart' as amplify_core;
 import 'QrRateLimit.dart';
 import 'QrSession.dart';
+import 'RoomControl.dart';
 import 'RoomEvent.dart';
 import 'SensorData.dart';
 import 'UserPreference.dart';
+import 'EventItem.dart';
+import 'SensorDataItem.dart';
 
+export 'EventItem.dart';
 export 'QrRateLimit.dart';
 export 'QrSession.dart';
+export 'RoomControl.dart';
+export 'RoomControlControlType.dart';
 export 'RoomEvent.dart';
 export 'SensorData.dart';
+export 'SensorDataItem.dart';
 export 'UserPreference.dart';
+export 'UserPreferenceRoomMode.dart';
 
 class ModelProvider implements amplify_core.ModelProviderInterface {
   @override
-  String version = "3f43f16768d688b805c5be09494261f1";
+  String version = "3caeb241ffff4319c6f4e5216c118d2e";
   @override
-  List<amplify_core.ModelSchema> modelSchemas = [QrRateLimit.schema, QrSession.schema, RoomEvent.schema, SensorData.schema, UserPreference.schema];
+  List<amplify_core.ModelSchema> modelSchemas = [QrRateLimit.schema, QrSession.schema, RoomControl.schema, RoomEvent.schema, SensorData.schema, UserPreference.schema];
   @override
-  List<amplify_core.ModelSchema> customTypeSchemas = [];
+  List<amplify_core.ModelSchema> customTypeSchemas = [EventItem.schema, SensorDataItem.schema];
   static final ModelProvider _instance = ModelProvider();
 
   static ModelProvider get instance => _instance;
@@ -49,6 +57,8 @@ class ModelProvider implements amplify_core.ModelProviderInterface {
         return QrRateLimit.classType;
       case "QrSession":
         return QrSession.classType;
+      case "RoomControl":
+        return RoomControl.classType;
       case "RoomEvent":
         return RoomEvent.classType;
       case "SensorData":
