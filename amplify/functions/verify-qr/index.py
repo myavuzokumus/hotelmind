@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 from botocore.exceptions import ClientError
+from datetime import datetime, timezone
 
 # DynamoDB tablosu - Ortam değişkeninden tablonun adını al
 session_table_name = os.environ.get('QR_SESSIONS_TABLE', 'QrSession-23zg6kw7jvc7vd6hacyznny2w4-NONE')
@@ -157,12 +158,16 @@ def is_session_used(session_id):
 def mark_session_used(session_id, room_id, expiry):
     """Oturumu kullanılmış olarak işaretle."""
     try:
-        current_time = int(time.time())
+
+        timestamp = int(time.time())
+        iso_time = datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
+
         sessions_table.put_item(
             Item={
                 'sessionId': session_id,
                 'roomId': room_id,
-                'usedAt': current_time,
+                'createdAt': iso_time,
+                'updatedAt': iso_time,
                 'expiry': expiry
             }
         )
@@ -183,6 +188,7 @@ def check_rate_limit(source_ip):
         window_seconds = int(os.environ.get('RATE_LIMIT_WINDOW', '60'))
 
         current_time = int(time.time())
+        iso_time = datetime.fromtimestamp(current_time, timezone.utc).isoformat()
         window_start_time = current_time - window_seconds
 
         # Kaynak IP'nin son isteklerini sorgula
@@ -203,6 +209,8 @@ def check_rate_limit(source_ip):
             Item={
                 'id': str(uuid.uuid4()),
                 'sourceIp': source_ip,
+                'createdAt': iso_time,
+                'updatedAt': iso_time,
                 'timestamp': current_time,
                 'ttl': current_time + (window_seconds * 2)  # TTL için 2 kat zaman penceresi
             }
