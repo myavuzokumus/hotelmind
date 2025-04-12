@@ -1,6 +1,11 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { verifyQrFunctionHandler } from '../functions/verify-qr/resource';
 import { aiAgentFunctionHandler } from '../functions/ai-agent/resource';
+import { userPreferencesFunctionHandler } from '../functions/user-pref/resource';
+import { secretKeyFunctionHandler } from '../functions/secret-key/resource';
+import { requestEventDataFunctionHandler } from '../functions/request-event-data/resource';
+import { requestSensorDataFunctionHandler } from '../functions/request-sensor-data/resource';
+import { requestRoomControlFunctionHandler } from '../functions/request-room-control/resource';
 
 const schema = a.schema({
   // QR Kodları doğrulaması için oturum tablosu
@@ -8,7 +13,6 @@ const schema = a.schema({
     .model({
       sessionId: a.string().required(),
       roomId: a.string().required(),
-      usedAt: a.integer().required(),
       expiry: a.integer().required(),
     })
     .identifier(['sessionId'])
@@ -18,44 +22,97 @@ const schema = a.schema({
     ]),
 
   // Oda sensör verileri tablosu
-  SensorData: a
-    .model({
-      roomId: a.string().required(),
-      timestamp: a.integer().required(),
-      temperature: a.float().required(),
-      humidity: a.float().required(),
-      gasLevel: a.integer().required(),
-      distance: a.float().required(),
-      occupied: a.boolean().required(),
-      cardInserted: a.boolean().required(),
-    })
-    .authorization(allow => [
-      allow.authenticated(),
-    ]),
+    SensorDataItem: a
+      .customType({
+        timestamp: a.integer(),
+        temperature: a.float(),
+        pressure: a.float(),
+        humidity: a.float(),
+        gasLevel: a.integer(),
+        distance: a.float(),
+        occupied: a.boolean(),
+        cardInserted: a.boolean(),
+      }),
 
-  // Oda olayları tablosu
-  RoomEvent: a
-    .model({
-      roomId: a.string().required(),
-      eventType: a.string().required(), // ALERT, SECURITY_WARNING vb.
-      timestamp: a.integer().required(),
-      description: a.string().required(),
-      resolved: a.boolean().required(),
-    })
-    .authorization(allow => [
-      allow.authenticated(),
-    ]),
+    SensorData: a
+      .model({
+        roomId: a.string().required(),
+        payload: a.ref('SensorDataItem').array(),
+      })
+      .identifier(['roomId'])
+      .authorization(allow => [
+        allow.publicApiKey(),
+        allow.authenticated()
+      ]),
+
+    // Önce olay öğelerini tanımlayan bir tip oluşturuyoruz
+    EventItem: a
+      .customType({
+        eventType: a.string(),
+        timestamp: a.integer(),
+        description: a.string(),
+        resolved: a.boolean(),
+      }),
+
+    // Sonra RoomEvent modelini güncelliyoruz
+    RoomEvent: a
+      .model({
+        roomId: a.string().required(),
+        payload: a.ref('EventItem').array().required(),
+      })
+      .identifier(['roomId'])
+      .authorization(allow => [
+        allow.publicApiKey(),
+        allow.authenticated()
+      ]),
 
   // Kullanıcı tercihleri tablosu
-  UserPreference: a
+    UserPreference: a
+      .model({
+        roomId: a.string().required(),
+        preferredTemperature: a.float(), // 18-28 °C arasında değer
+        preferredHumidity: a.float(), // 30-70 % arasında değer
+        autoClimate: a.boolean(), // Otomatik iklimlendirme
+        automaticLights: a.boolean(), // Otomatik aydınlatma
+        voiceReports: a.boolean(), // Sesli bildirimleri aktif etme
+        roomMode: a.enum(['comfort', 'eco', 'away']), // Oda modu
+      })
+      .identifier(['roomId'])
+      .authorization(allow => [
+        allow.publicApiKey(),
+        allow.authenticated()
+      ]),
+
+  // Oda kontrolleri için model
+  RoomControl: a
     .model({
       roomId: a.string().required(),
-      preferences: a.json().required(), // JSON formatında tercihler
+      controlType: a.enum(['light', 'device']), // Kontrol tipi: ışık veya cihaz
+      controlName: a.string().required(), // Örn: main, desk, tv, ac
+      status: a.boolean(), // açık/kapalı durumu
+      lastUpdated: a.integer() // son güncelleme zamanı
     })
+    .identifier(['roomId', 'controlName'])
     .authorization(allow => [
-      allow.owner(),
-      allow.authenticated(),
+      allow.publicApiKey(),
+      allow.authenticated()
     ]),
+
+    // Oda kontrolü için özel resolver
+    RequestRoomControl: a
+        .query()
+        .arguments({
+            roomId: a.string().required(),
+            controlType: a.string().required(),  // 'light' veya 'device'
+            controlName: a.string().required(),  // 'main', 'desk', 'tv', 'ac' vb.
+            status: a.boolean().required()
+        })
+        .returns(a.json())
+        .authorization(allow => [
+            allow.publicApiKey(),
+            allow.authenticated(),
+        ])
+        .handler(a.handler.function(requestRoomControlFunctionHandler)),
 
   // QR kodu doğrulama için özel resolver
   QrVerify: a
@@ -68,6 +125,70 @@ const schema = a.schema({
       allow.publicApiKey()
     ])
     .handler(a.handler.function(verifyQrFunctionHandler)),
+
+  FetchUserPreference: a
+    .query()
+    .arguments({
+      roomId: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization(allow => [
+      allow.publicApiKey(),
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(userPreferencesFunctionHandler)),
+
+  SecretKey: a
+    .query()
+    .arguments({
+      name: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization(allow => [
+      allow.publicApiKey(),
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(secretKeyFunctionHandler)),
+
+    // Olay verilerini almak için özel resolver
+    FetchEventData: a
+        .query()
+        .arguments({
+            roomId: a.string().required(),
+        })
+        .returns(a.json())
+        .authorization(allow => [
+            allow.publicApiKey(),
+            allow.authenticated(),
+        ])
+        .handler(a.handler.function(requestEventDataFunctionHandler)),
+
+    // Oda sensör verilerini almak için özel resolver
+    FetchSensorData: a
+        .query()
+        .arguments({
+            roomId: a.string().required(),
+        })
+        .returns(a.json())
+        .authorization(allow => [
+            allow.publicApiKey(),
+            allow.authenticated(),
+        ])
+        .handler(a.handler.function(requestSensorDataFunctionHandler)),
+
+    QrRateLimit: a
+      .model({
+        sourceIp: a.string().required(),
+        timestamp: a.integer().required(),
+        ttl: a.integer(),
+      })
+      .secondaryIndexes((index) => [
+            index("sourceIp")
+              .sortKeys(["timestamp"]),
+          ])
+      .authorization(allow => [
+        allow.publicApiKey(), // Lambda fonksiyonunun erişebilmesi için
+      ]),
 
   // AI agent işlemi için özel resolver
   ProcessSensorData: a
@@ -87,19 +208,6 @@ const schema = a.schema({
     ])
     .handler(a.handler.function(aiAgentFunctionHandler)),
 
-    QrRateLimit: a
-      .model({
-        sourceIp: a.string().required(),
-        timestamp: a.integer().required(),
-        ttl: a.integer(),
-      })
-      .secondaryIndexes((index) => [
-            index("sourceIp")
-              .sortKeys(["timestamp"]),
-          ])
-      .authorization(allow => [
-        allow.publicApiKey(), // Lambda fonksiyonunun erişebilmesi için
-      ])
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -107,10 +215,14 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'userPool',
+    // Varsayılan modu apiKey yapın
+    defaultAuthorizationMode: 'apiKey',
     apiKeyAuthorizationMode: {
-      expiresInDays: 30,
+      expiresInDays: 30, // Veya istediğiniz süre
     },
+    // userPool'u ek mod olarak tanımlayın (eğer hala gerekiyorsa)
+    oidcAuthorizationMode: undefined, // OIDC kullanmıyorsanız
+    lambdaAuthorizationMode: undefined // Lambda authorizer kullanmıyorsanız
   },
 });
 
