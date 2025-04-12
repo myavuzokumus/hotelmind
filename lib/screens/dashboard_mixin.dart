@@ -6,8 +6,10 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
   final ValueNotifier<bool> _isLoggingOut = ValueNotifier<bool>(false);
   bool _isLoading = true;
-  late String _roomId;
-  late String _currentSessionId;
+
+  late final String _roomId;
+  late final String _currentSessionId;
+
   late final SensorService _sensorService;
   final String _userName = 'Misafir';
 
@@ -45,11 +47,11 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
   @override
   void initState() {
 
-    _initialize();
-
     // Widget'tan gelen roomId ve sessionId değerlerini al
     _roomId = widget.roomId;
     _currentSessionId = widget.sessionId;
+
+    _initialize();
 
     // Oturum sonlandırma olaylarını dinle
     _sessionTerminationSub = EventBus().onSessionTerminated.listen((terminatedSessionId) {
@@ -74,9 +76,12 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
   Future<void> _initialize() async {
     try {
+      // Oda servisini başlat
+      _roomService.initialize(roomId: _roomId);
+
       // Sensör servisleri başlat
       _sensorService = SensorService();
-      _sensorService.initialize();
+      _sensorService.initialize(roomId: _roomId);
 
       // Sensör verilerine abone ol
       _temperatureSub = _sensorService.temperatureStream.listen((value) {
@@ -129,13 +134,13 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
       });
 
       // Oda geçmişini yükle
-      //_loadRoomHistory();
+      _loadRoomHistory();
 
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
-      print("Initialization error: $e");
+      log("Initialization error: $e");
     }
   }
 
@@ -143,8 +148,10 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
     try {
       // Veritabanından son sensör verilerini al
       final sensorData = await _roomService.getSensorHistory(_roomId);
+      log("Sensor data: $sensorData");
       // Veritabanından son olayları al
       final eventData = await _roomService.getEventHistory(_roomId);
+      log("Event data: $eventData");
 
       setState(() {
         if (sensorData != null) {
@@ -165,7 +172,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
         }
       });
     } catch (e) {
-      print("Error loading room history: $e");
+      log("Error loading room history: $e");
     }
   }
 
@@ -190,11 +197,11 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
       });
 
       // Servise bilgiyi gönder
-      // await _roomService.setRoomControl(_roomId, {
-      //   'type': 'light',
-      //   'lightType': type,
-      //   'status': value
-      // });
+      await _roomService.setRoomControl(_roomId, {
+        'type': 'light',
+        'lightType': type,
+        'status': value
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -203,7 +210,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
         ),
       );
     } catch (e) {
-      print('Aydınlatma kontrolü hatası: $e');
+      log('Aydınlatma kontrolü hatası: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('İşlem sırasında bir hata oluştu'),
@@ -228,11 +235,11 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
       });
 
       // Servise bilgiyi gönder
-      // await _roomService.setRoomControl(_roomId, {
-      //   'type': 'device',
-      //   'deviceType': type,
-      //   'status': value
-      // });
+      await _roomService.setRoomControl(_roomId, {
+        'type': 'device',
+        'deviceType': type,
+        'status': value
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -241,7 +248,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
         ),
       );
     } catch (e) {
-      print('Cihaz kontrolü hatası: $e');
+      log('Cihaz kontrolü hatası: $e');
     }
   }
 
@@ -277,9 +284,6 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
       final response = await Amplify.API.query(request: request).response;
 
-      safePrint(response.errors);
-      safePrint("Ham yanıt: ${response.data!.items.toString()}");
-
       if (response.data != null) {
         return response.data!.items;
         // return response.data!.items
@@ -291,7 +295,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
       return <QrSession>[];
     } catch (e) {
-      safePrint("Aktif kullanıcıları alma hatası: $e");
+      log("Aktif kullanıcıları alma hatası: $e");
       rethrow;
     }
   }
