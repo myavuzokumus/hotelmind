@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hotelmind/app_scaffold.dart';
 import 'package:hotelmind/screens/home_screen.dart';
 import 'package:hotelmind/screens/settings_screen.dart';
-import 'package:hotelmind/services/not_found_screen.dart';
+import 'package:hotelmind/screens/not_found_screen.dart';
 
 // Router Provider
 final routerProvider = Provider<GoRouter>((ref) {
