@@ -1,15 +1,12 @@
 import 'dart:async';
-import 'dart:math';
 
+import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:hotelmind/models/SensorData.dart';
 
-import '../models/SensorData.dart';
+import 'debug_log_provider.dart';
 
 class SensorService {
-  // Simülasyon için değişkenler
-  bool _isMocked = true;
-  Timer? _mockDataTimer;
-  int _cardStatusCounter = 0;
 
   // Sensör değerleri
   double _temperature = 22.0;
@@ -17,6 +14,8 @@ class SensorService {
   int _gasLevel = 3;
   double _distance = 300.0;
   bool _isCardInserted = false;
+
+  String roomId = "room_001";
 
   // Stream controllers
   final _temperatureController = StreamController<double>.broadcast();
@@ -31,6 +30,9 @@ class SensorService {
   Stream<int> get gasLevelStream => _gasLevelController.stream;
   Stream<double> get distanceStream => _distanceController.stream;
   Stream<bool> get cardStatusStream => _cardStatusController.stream;
+
+  // Subscription değişkeni
+  StreamSubscription<GraphQLResponse<SensorData>>? _sensorSubscription;
 
   // Getters
   double get temperature => _temperature;
@@ -49,109 +51,117 @@ class SensorService {
   SensorService._internal();
 
   // Initialize sensor service
-  void initialize() {
-    if (_isMocked) {
-      _startMockDataGeneration();
-    } else {
-      _connectToRealSensors();
+  void initialize({String? roomId}) {
+    if (roomId != null) {
+      this.roomId = roomId;
     }
+    _connectToSensors();
   }
 
-  // Mock data generation for testing
-  void _startMockDataGeneration() {
-    _mockDataTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      // Simulate temperature changes
-      _temperature += (Random().nextDouble() * 0.5) - 0.25;
-      if (_temperature < 18) _temperature = 18;
-      if (_temperature > 30) _temperature = 30;
+  void _connectToSensors() {
+    log("Sensörlere bağlanılıyor...");
 
-      // Simulate humidity changes
-      _humidity += (Random().nextDouble() * 2) - 1;
-      if (_humidity < 30) _humidity = 30;
-      if (_humidity > 70) _humidity = 70;
+    // İlk veri çekimi
+    _fetchLatestSensorData();
 
-      // Simulate gas level changes
-      _gasLevel = 3 + Random().nextInt(2);
-
-      // Simulate distance changes
-      if (Random().nextInt(100) > 80) {
-        _distance = 100 + Random().nextDouble() * 400;
-      }
-
-      // Simulate card status changes
-      _cardStatusCounter++;
-      if (_cardStatusCounter >= 60) {
-        _isCardInserted = !_isCardInserted;
-        _cardStatusCounter = 0;
-      }
-
-      // Update streams
-      _temperatureController.add(_temperature);
-      _humidityController.add(_humidity);
-      _gasLevelController.add(_gasLevel);
-      _distanceController.add(_distance);
-      _cardStatusController.add(_isCardInserted);
-
-      // Send data to AWS
-      //_sendDataToAWS();
+    // Periyodik olarak verileri yenile (her 5 saniyede bir)
+    Timer.periodic(Duration(seconds: 10), (_) {
+      _fetchLatestSensorData();
     });
   }
 
-  // Connect to real sensors (this would integrate with actual IoT devices)
-  void _connectToRealSensors() {
-    // This would be replaced with actual IoT device code
-    safePrint("Connecting to real sensors...");
-  }
-
-  // Send data to AWS IoT and DynamoDB
-  Future<void> _sendDataToAWS() async {
+  Future<void> _fetchLatestSensorData() async {
     try {
-      // Amplify v2 DataStore
-      final sensorData = SensorData(
-          roomId: 'room_001',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          temperature: _temperature,
-          humidity: _humidity,
-          gasLevel: _gasLevel,
-          distance: _distance,
-          occupied: _isPersonDetected(),
-          cardInserted: _isCardInserted
+      final request = ModelQueries.get(
+        SensorData.classType,
+        SensorDataModelIdentifier(roomId: roomId),
+        authorizationMode: APIAuthorizationType.apiKey,
       );
 
-      // Save to DataStore which syncs with AppSync/DynamoDB
-      await Amplify.DataStore.save(sensorData);
+      final response = await Amplify.API.query(request: request).response;
 
-      // Optionally send real-time data via REST API
-      final restOperation = Amplify.API.post(
-          '/sensor-data',
-          body: HttpPayload.json({
-            'deviceId': 'room_001',
-            'timestamp': DateTime.now().millisecondsSinceEpoch,
-            'temperature': _temperature,
-            'humidity': _humidity,
-            'gasLevel': _gasLevel,
-            'distance': _distance,
-            'occupied': _isPersonDetected(),
-            'cardInserted': _isCardInserted
-          })
-      );
+      if (response.data != null && response.data!.payload!.isNotEmpty) {
+        final latestSensor = response.data!.payload!.last;
 
-      await restOperation.response;
+        // Verileri güncelle ve stream'lere ilet
+        _temperature = latestSensor.temperature ?? 22.0;
+        _humidity = latestSensor.humidity ?? 50.0;
+        _gasLevel = latestSensor.gasLevel ?? 3;
+        _distance = latestSensor.distance ?? 300.0;
+        _isCardInserted = latestSensor.cardInserted ?? false;
 
+        // Stream'lere bildirim gönder
+        _temperatureController.add(_temperature);
+        _humidityController.add(_humidity);
+        _gasLevelController.add(_gasLevel);
+        _distanceController.add(_distance);
+        _cardStatusController.add(_isCardInserted);
+
+        log("Sensör verileri güncellendi: T:$_temperature, H:$_humidity");
+      }
     } catch (e) {
-      print("Error sending data to AWS: $e");
+      log("Sensör verisi çekilirken hata: $e");
     }
   }
 
-  // Determine if a person is detected based on distance sensor
-  bool _isPersonDetected() {
-    // If distance is less than 150cm, assume a person is detected
-    return _distance < 150;
-  }
+// // Sensörlere bağlan ve gerçek zamanlı güncellemeleri dinle
+//   void _connectToSensors() {
+//     log("Sensörlere bağlanılıyor...");
+//
+//     try {
+//       // SensorData modeli için abonelik (subscription) oluştur
+//       final subscriptionRequest = ModelSubscriptions.onUpdate(
+//         SensorData.classType,
+//         authorizationMode: APIAuthorizationType.apiKey,
+//         where: SensorData.ROOMID.eq("room_001"), // Sensör ID'sini burada belirtin
+//       );
+//
+//       // Stream oluştur
+//       final subscription = Amplify.API.subscribe(
+//         subscriptionRequest,
+//         onEstablished: () => log("Sensör verilerine abonelik başarıyla kuruldu"),
+//       );
+//
+//       // Stream'e abone ol
+//       _sensorSubscription = subscription.listen(
+//             (event) {
+//           final sensorData = event.data;
+//           log("Sensör verisi güncellendi: $sensorData");
+//           if (sensorData != null && sensorData.payload!.isNotEmpty) {
+//             // Dizideki son sensör verisini al
+//             log("Sensör verisi alındı: ${sensorData.payload}");
+//
+//             final latestSensor = sensorData.payload!.last;
+//
+//             // Verileri güncelle ve stream'lere ilet
+//             _temperature = latestSensor.temperature ?? 22.0;
+//             _humidity = latestSensor.humidity ?? 50.0;
+//             _gasLevel = latestSensor.gasLevel ?? 3;
+//             _distance = latestSensor.distance ?? 300.0;
+//             _isCardInserted = latestSensor.cardInserted ?? false;
+//
+//             // Stream'lere bildirim gönder
+//             _temperatureController.add(_temperature);
+//             _humidityController.add(_humidity);
+//             _gasLevelController.add(_gasLevel);
+//             _distanceController.add(_distance);
+//             _cardStatusController.add(_isCardInserted);
+//
+//             log("Yeni sensör verileri alındı: T:$_temperature, H:$_humidity, G:$_gasLevel");
+//           }
+//         },
+//         onError: (error) {
+//           log("Sensör verisi aboneliğinde hata: $error");
+//         },
+//       );
+//     } catch (e) {
+//       log("Sensör bağlantısı kurulamadı: $e");
+//     }
+//   }
 
   // Clean up
   void dispose() {
-    _mockDataTimer?.cancel();
+    _sensorSubscription?.cancel();
     _temperatureController.close();
     _humidityController.close();
     _gasLevelController.close();
