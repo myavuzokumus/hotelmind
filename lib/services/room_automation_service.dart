@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
 import 'package:hotelmind/models/RoomControl.dart';
 import 'package:hotelmind/models/RoomControlControlType.dart';
 import 'package:hotelmind/models/RoomEvent.dart';
@@ -87,10 +89,33 @@ class RoomAutomationService {
           });
 
           log("Yeni olay verisi alındı: ${lastEvent.eventType} - ${lastEvent.description}");
+
+          // Eğer Alarm tipinde bir olay ise ses çal
+          if (lastEvent.eventType != null && lastEvent.eventType!.toLowerCase().contains("alert")) {
+            _playAlarmSound();
+          }
         }
+
       }
     } catch (e) {
       log("Olay verisi çekilirken hata: $e");
+    }
+  }
+
+  // Alarm sesi çalmak için metot
+  void _playAlarmSound() {
+    // AudioPlayer kullanarak ses çalma
+    try {
+      final player = AudioPlayer();
+      player.play(AssetSource('sounds/alarm.m4a')); // assets/sounds/alarm.mp3 dosyası gerekli
+
+      log("ALARM SESİ ÇALINIYOR!");
+
+      // Eğer paketi eklemek istemezseniz, native kanal üzerinden de ses çalabilirsiniz
+      // ya da alternatif olarak:
+      SystemSound.play(SystemSoundType.alert); // Basit bir uyarı sesi
+    } catch (e) {
+      log("Ses çalma hatası: $e");
     }
   }
 
