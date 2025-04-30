@@ -6,6 +6,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
   final ValueNotifier<bool> _isLoggingOut = ValueNotifier<bool>(false);
   bool _isLoading = true;
+  bool _aiAssistantEnabled = false;
 
   late final String _roomId;
   late final String _currentSessionId;
@@ -252,6 +253,34 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
     }
   }
 
+  // dashboard_mixin.dart dosyasına ekleyin
+  void _toggleAI(bool value) {
+    setState(() {
+      _aiAssistantEnabled = value;
+    });
+
+    // Eğer aktive edildiyse animasyonu başlat, aksi halde durdur
+    if (_aiAssistantEnabled) {
+      _aiButtonAnimController.repeat();
+    } else {
+      _aiButtonAnimController.stop();
+    }
+
+    // EventBus üzerinden olayı yayınla
+    //ref.read(eventBusProvider).publish(
+    //  'AI Asistan ${_aiAssistantEnabled ? "aktifleştirildi" : "devre dışı bırakıldı"}',
+    //);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_aiAssistantEnabled
+            ? 'AI Asistan aktifleştirildi'
+            : 'AI Asistan devre dışı bırakıldı'),
+        backgroundColor: _aiAssistantEnabled ? Colors.green : Colors.grey,
+      ),
+    );
+  }
+
   // YENİ: Yardımcı metotlar
   String _getLightName(String type) {
     switch (type) {
@@ -377,9 +406,35 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
     _eventSub.cancel();
     _isLoggingOut.dispose();
     _sensorService.dispose();
+    _aiButtonAnimController.dispose();
     super.dispose();
   }
 
+  // dashboard_mixin.dart dosyasına AnimationController ekleyin
+  late AnimationController _aiButtonAnimController;
+  late Animation<Color?> _aiButtonColorAnimation;
+  final List<Color> _aiButtonColors = [
+    Colors.purple,
+    Colors.blue,
+    Colors.cyan,
+    Colors.green,
+    Colors.teal,
+    Colors.indigo,
+  ];
+
+  // Animasyon controller'ı başlatma işlemini ayır
+  void initAIAnimation(TickerProvider vsync) {
+    _aiButtonAnimController = AnimationController(
+      duration: Duration(seconds: 3),
+      vsync: vsync, // State'ten gelen vsync kullanılıyor
+    )..repeat();
+
+    _aiButtonColorAnimation = _aiButtonAnimController
+        .drive(
+        ColorTween(begin: _aiButtonColors.first, end: _aiButtonColors.last)
+            .chain(CurveTween(curve: Curves.easeInOut))
+    );
+  }
 
 
 }

@@ -32,7 +32,16 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> with _DashboardMixin {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> with _DashboardMixin, SingleTickerProviderStateMixin {
+
+  // _DashboardScreenState içinde initState metoduna ekle
+  @override
+  void initState() {
+    super.initState();
+
+    // Mixin'deki animasyon başlatma metodunu çağır ve this (TickerProvider) geçir
+    initAIAnimation(this);
+  }
 
   Future<void> _showSettingsDialog() async {
     showDialog(
@@ -544,6 +553,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
 
                     SizedBox(height: 32),
 
+                    Center(child: _buildAIButton()),
+
+                    SizedBox(height: 32),
+
                     // Sensör grafikleri - Web için uyarlandı
                     LayoutBuilder(
                         builder: (context, constraints) {
@@ -753,4 +766,62 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
       ),
     );
   }
+
+  Widget _buildAIButton() {
+    return AnimatedBuilder(
+      animation: _aiButtonAnimController,
+      builder: (context, child) {
+        final Color currentColor = _aiAssistantEnabled
+            ? _aiButtonColors[(_aiButtonAnimController.value * (_aiButtonColors.length - 1)).round()]
+            : Colors.grey.shade600;
+
+        return Card(
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _toggleAI(!_aiAssistantEnabled),
+            child: Container(
+              width: 240,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: _aiAssistantEnabled
+                    ? LinearGradient(
+                  colors: [currentColor.withValues(alpha: 0.7), currentColor],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+                    : LinearGradient(
+                  colors: [Colors.grey.shade300, Colors.grey.shade500],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.smart_toy,
+                    size: 48,
+                    color: _aiAssistantEnabled ? Colors.white : Colors.grey.shade800,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    _aiAssistantEnabled ? 'AI Asistan Aktif' : 'AI Asistan Devre Dışı',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _aiAssistantEnabled ? Colors.white : Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 }
