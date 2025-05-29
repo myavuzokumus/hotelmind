@@ -18,6 +18,7 @@ class RoomAutomationService {
   final _eventController = StreamController<Map<String, dynamic>>.broadcast();
 
   String roomId = "room_001";
+  int? _lastProcessedEventTimestamp;
 
   // Stream getter
   Stream<Map<String, dynamic>> get eventStream => _eventController.stream;
@@ -78,21 +79,31 @@ class RoomAutomationService {
 
         // Payload array'deki olayları döngüyle işle
         if (eventData.payload.isNotEmpty) {
-          // En son olayı al ve stream'e gönder
+          // En son olayı al
           final lastEvent = eventData.payload.last;
 
-          _eventController.add({
-            'eventType': lastEvent.eventType,
-            'timestamp': lastEvent.timestamp,
-            'description': lastEvent.description,
-            'resolved': lastEvent.resolved
-          });
+          // Eğer bu event daha önce işlenmediyse stream'e gönder
+          if (_lastProcessedEventTimestamp == null ||
+              lastEvent.timestamp != _lastProcessedEventTimestamp) {
 
-          log("Yeni olay verisi alındı: ${lastEvent.eventType} - ${lastEvent.description}");
+            _eventController.add({
+              'eventType': lastEvent.eventType,
+              'timestamp': lastEvent.timestamp,
+              'description': lastEvent.description,
+              'resolved': lastEvent.resolved
+            });
 
-          // Eğer Alarm tipinde bir olay ise ses çal
-          if (lastEvent.eventType != null && lastEvent.eventType!.toLowerCase().contains("alert")) {
-            _playAlarmSound();
+            // Son işlenen event'in timestamp'ini güncelle
+            _lastProcessedEventTimestamp = lastEvent.timestamp;
+
+            log("Yeni olay verisi alındı: ${lastEvent.eventType} - ${lastEvent.description}");
+
+            // Eğer Alarm tipinde bir olay ise ses çal
+            if (lastEvent.eventType != null && lastEvent.eventType!.toLowerCase().contains("alert")) {
+              _playAlarmSequence(); // await olmadan çağırarak engellemeyi önle
+            }
+          } else {
+            log("Event zaten işlenmiş, tekrar eklenmedi: ${lastEvent.timestamp}");
           }
         }
 
@@ -102,18 +113,26 @@ class RoomAutomationService {
     }
   }
 
+  Future<void> _playAlarmSequence() async {
+    const int alarmTekrarSayisi = 3;
+    const Duration alarmArasiGecikme = Duration(seconds: 1);
+
+    for (int i = 0; i < alarmTekrarSayisi; i++) {
+      await Future.delayed(alarmArasiGecikme); // Ses çalmadan önce kısa bir gecikme
+      _playAlarmSound();
+    }
+  }
+
   // Alarm sesi çalmak için metot
   void _playAlarmSound() {
     // AudioPlayer kullanarak ses çalma
     try {
       final player = AudioPlayer();
-      player.play(AssetSource('sounds/alarm.m4a')); // assets/sounds/alarm.mp3 dosyası gerekli
+      player.play(AssetSource('sounds/alarm.wav')); //
 
       log("ALARM SESİ ÇALINIYOR!");
 
-      // Eğer paketi eklemek istemezseniz, native kanal üzerinden de ses çalabilirsiniz
-      // ya da alternatif olarak:
-      SystemSound.play(SystemSoundType.alert); // Basit bir uyarı sesi
+      SystemSound.play(SystemSoundType.alert);
     } catch (e) {
       log("Ses çalma hatası: $e");
     }
@@ -251,7 +270,7 @@ class RoomAutomationService {
 
       final getResponse = await Amplify.API.query(request: getRequest).response;
 
-      final response;
+      final GraphQLResponse<UserPreference> response;
 
       if (getResponse.data != null) {
         // Mevcut tercihleri güncelle
@@ -493,5 +512,6 @@ class RoomAutomationService {
   void dispose() {
     _subscription?.cancel();
     _eventController.close();
+    _lastProcessedEventTimestamp = null; // Timestamp'i de temizle
   }
 }
