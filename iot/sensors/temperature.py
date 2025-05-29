@@ -53,12 +53,6 @@ class TemperatureSensor:
         try:
             bmp280 = self.config.bmp280
 
-            # Chip ID kontrol et
-            chip_id = self.i2c_bus.read_byte_data(bmp280["ADDRESS"], bmp280["REG_CHIPID"])
-            if chip_id != 0x58:  # BMP280 chip ID: 0x58
-                self.logger.error(f"BMP280 bulunamadı. Okunan Chip ID: 0x{chip_id:02x}")
-                return False
-
             # Kalibrasyon verilerini oku
             self._read_calibration_data()
 

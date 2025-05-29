@@ -60,8 +60,16 @@ def command_handler(topic, message):
 
             # Işık kontrolü ise (gelecekte eklenebilir)
             elif control_type == "light":
-                # Burada ışık kontrolü kodu olabilir
+                # Sadece LED'leri kontrol et, IR cihaz kontrolünü kullanma
+                led_name = control_name.upper() if control_name == "main" else control_name
+                actuator_manager.ir_controller.set_led_status(led_name, status)
                 logger.info(f"Işık kontrolü: {control_name} - {'açık' if status else 'kapalı'}")
+
+                # Işık durumlarını AWS IoT'ye raporla
+                if iot_client:
+                    device_statuses = {}
+                    device_statuses[control_name] = status
+                    iot_client.publish_device_status(device_statuses)
 
         # Eylem komutları
         if "actions" in message:
@@ -96,38 +104,30 @@ def check_dangerous_conditions(sensor_data, iot_client):
     """Tehlikeli durumları kontrol eder ve gerekirse olay kaydeder"""
 
     # Gaz seviyesi kontrolü
-    if sensor_data["gasLevel"] > 7:
-        iot_client.publish_room_event("ALERT", "Tehlikeli gaz seviyesi tespit edildi")
+    if sensor_data["gasLevel"] > 5:
+        logger.warning("Yüksek gaz seviyesi tespit edildi!")
+        actuator_manager.alert.play_warning_sound()
 
     # Hareket/mevcudiyet kontrolü
     if sensor_data["distance"] < 50 and not sensor_data["occupied"]:
         iot_client.publish_room_event("SECURITY_WARNING", "Şüpheli hareket tespit edildi")
 
 
-def apply_preferences(sensor_data, preferences, actuator_manager, iot_client):
+def apply_preferences(sensor_data, preferences, actuator_manager):
     """Kullanıcı tercihlerini uygular"""
+
+    # Climate controller'a preference'ları aktar
+    actuator_manager.climate.update_preferences(preferences.user_preferences)
 
     # Sıcaklık kontrolü
     if preferences.user_preferences.get("autoClimate", True):
         current_temp = sensor_data["temperature"]
         actuator_manager.climate.adjust_for_temperature(current_temp)
 
-    # Nem kontrolü
+    # Nem kontrolü - artık gerçek fonksiyon çağrısı
     if preferences.user_preferences.get("autoClimate", True):
         current_humidity = sensor_data["humidity"]
-        target_humidity = preferences.user_preferences.get("preferredHumidity", 50.0)
-
-        if abs(current_humidity - target_humidity) > 10:
-            logger.info(f"Nemlendirme ayarlanıyor: Mevcut {current_humidity}%, Hedef {target_humidity}%")
-            # Burada nemlendirici kontrol kodu olabilir
-
-    # Sesli raporlama
-    if preferences.user_preferences.get("voiceReports", False) and sensor_data["gasLevel"] > 5:
-        # Yüksek gaz seviyesi uyarısı
-        logger.warning("Yüksek gaz seviyesi tespit edildi!")
-        actuator_manager.alert.play_warning_sound()
-        iot_client.publish_room_event("ALERT", "Yüksek gaz seviyesi tespit edildi")
-
+        actuator_manager.climate.adjust_for_humidity(current_humidity)
 
 def sensor_callback(data):
     """Sensör verilerini işler"""
@@ -149,7 +149,7 @@ def sensor_callback(data):
 
     # Kullanıcı tercihlerini güncelle ve uygula
     #preferences = preference_manager.fetch_preferences()
-    apply_preferences(data, preference_manager, actuator_manager, iot_client)
+    apply_preferences(data, preference_manager, actuator_manager)
 
 
 def cleanup_resources():
@@ -254,7 +254,7 @@ def main():
         # Logger'ı yapılandır
         log_level = logging.DEBUG if args.verbose else logging.INFO
         logger = setup_logger(level=log_level)
-        aws_logger = setup_aws_iot_logger()
+        #aws_logger = setup_aws_iot_logger()
 
         # Konfigürasyon yükle
         config = Config()
@@ -295,7 +295,7 @@ def main():
             cleanup_resources()
             return 1
 
-        actuator_manager.set_iot_client(iot_client)
+        actuator_manager.set_iot_client(iot_client, preference_manager)
 
         #Cooldown süresi
         time.sleep(5)
@@ -304,7 +304,7 @@ def main():
         qr_generator = QRCodeGenerator(config, iot_client)
 
         # Sensör izlemeyi başlat (10 saniyelik aralıklarla)
-        monitor_thread = sensor_manager.start_monitoring(sensor_callback, interval=10)
+        #monitor_thread = sensor_manager.start_monitoring(sensor_callback, interval=10)
 
         # İlk kullanıcı tercihlerini al
         #preference_manager.fetch_preferences(force=True)

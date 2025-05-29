@@ -22,6 +22,8 @@ class Config:
         "DISTANCE_TRIG_PIN": 16,  # HC-SR04 Trigger pin
         "DISTANCE_ECHO_PIN": 20,  # HC-SR04 Echo pin
         "SPEAKER_PIN": 23,  # Hoparlör için PWM pini
+        "LED_MAIN_PIN": 13,  # LED için GPIO pini
+        "LED_DESK_PIN": 26,  # Alarm LED'i için GPIO pini
     }
 
     # BMP280 tanımlamaları

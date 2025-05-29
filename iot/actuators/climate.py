@@ -1,5 +1,4 @@
 import logging
-import time
 
 
 class ClimateController:
@@ -22,6 +21,8 @@ class ClimateController:
             "heating": False,
             "cooling": False,
             "fan": False,
+            "humidifier": False,
+            "dehumidifier": False,
             "target_temp": 22.0,
             "target_humidity": 50.0
         }
@@ -46,6 +47,40 @@ class ClimateController:
         except Exception as e:
             self.logger.error(f"İklimlendirme kontrolörü başlatma hatası: {e}")
             return False
+
+    def update_preferences(self, preferences):
+        """
+        Kullanıcı tercihlerine göre hedef değerleri günceller
+
+        Args:
+            preferences: Kullanıcı tercihleri
+        """
+        try:
+            old_temp = self.state["target_temp"]
+            old_humidity = self.state["target_humidity"]
+
+            # Tercihlerdeki değerleri al
+            if "preferredTemperature" in preferences:
+                self.state["target_temp"] = float(preferences["preferredTemperature"])
+
+            if "preferredHumidity" in preferences:
+                self.state["target_humidity"] = float(preferences["preferredHumidity"])
+
+            # Değerler değiştiyse log yaz
+            if old_temp != self.state["target_temp"]:
+                self.logger.info(f"Hedef sıcaklık güncellendi: {old_temp}°C -> {self.state['target_temp']}°C")
+
+            if old_humidity != self.state["target_humidity"]:
+                self.logger.info(f"Hedef nem güncellendi: {old_humidity}% -> {self.state['target_humidity']}%")
+
+            # Güncellenen tercihlere göre olay yayınla
+            if self.iot_client and (
+                    old_temp != self.state["target_temp"] or old_humidity != self.state["target_humidity"]):
+                self.iot_client.publish_room_event("PREFERENCE_UPDATE",
+                                                   f"İklimlendirme hedefleri güncellendi - Sıcaklık: {self.state['target_temp']}°C, Nem: {self.state['target_humidity']}%")
+
+        except Exception as e:
+            self.logger.error(f"Tercih güncelleme hatası: {e}")
 
     def apply_settings(self, settings):
         """
@@ -123,53 +158,133 @@ class ClimateController:
 
         if current_temp < target_temp - 1.5:
             # Isıtma gerekiyor
+            if not self.state["heating"]:
+                self._heat()
             self.logger.info(f"Isıtma aktif: Mevcut {current_temp}°C, Hedef {target_temp}°C")
-            self._heat()
         elif current_temp > target_temp + 1.5:
             # Soğutma gerekiyor
+            if not self.state["cooling"]:
+                self._cool()
             self.logger.info(f"Soğutma aktif: Mevcut {current_temp}°C, Hedef {target_temp}°C")
-            self._cool()
         else:
             # Hedef sıcaklık aralığındayız, bir şey yapma
             if self.state["heating"] or self.state["cooling"]:
                 self.logger.info(f"İklimlendirme devre dışı: Mevcut {current_temp}°C, Hedef {target_temp}°C")
                 self._turn_off()
 
+    def adjust_for_humidity(self, current_humidity):
+        """
+        Mevcut nem oranına göre nemlendirme/nem alma işlemi yapar
+
+        Args:
+            current_humidity: Mevcut nem oranı
+        """
+        target_humidity = self.state["target_humidity"]
+
+        if current_humidity < target_humidity - 5:
+            # Nemlendirme gerekiyor
+            if not self.state["humidifier"]:
+                self._humidify()
+            self.logger.info(f"Nemlendirme aktif: Mevcut {current_humidity}%, Hedef {target_humidity}%")
+        elif current_humidity > target_humidity + 5:
+            # Nem alma gerekiyor
+            if not self.state["dehumidifier"]:
+                self._dehumidify()
+            self.logger.info(f"Nem alma aktif: Mevcut {current_humidity}%, Hedef {target_humidity}%")
+        else:
+            # Hedef nem aralığındayız, nem kontrol cihazlarını kapat
+            if self.state["humidifier"] or self.state["dehumidifier"]:
+                self.logger.info(f"Nem kontrolü devre dışı: Mevcut {current_humidity}%, Hedef {target_humidity}%")
+                self._turn_off_humidity_control()
+
     def _heat(self):
         """Isıtma fonksiyonu"""
         if not self.has_hardware:
             self.logger.info("SİMÜLASYON: Isıtma açıldı")
-            return
+        else:
+            try:
+                # Isıtıcı kontrolü burada
+                pass
+            except Exception as e:
+                self.logger.error(f"Isıtıcı kontrolü hatası: {e}")
 
-        try:
-            # Isıtıcı kontrolü burada
-            self.state["heating"] = True
-            self.state["cooling"] = False
-        except Exception as e:
-            self.logger.error(f"Isıtıcı kontrolü hatası: {e}")
+        self.state["heating"] = True
+        self.state["cooling"] = False
 
     def _cool(self):
         """Soğutma fonksiyonu"""
         if not self.has_hardware:
             self.logger.info("SİMÜLASYON: Soğutma açıldı")
-            return
+        else:
+            try:
+                # Soğutucu kontrolü burada
+                pass
+            except Exception as e:
+                self.logger.error(f"Soğutucu kontrolü hatası: {e}")
 
-        try:
-            # Soğutucu kontrolü burada
-            self.state["cooling"] = True
-            self.state["heating"] = False
-        except Exception as e:
-            self.logger.error(f"Soğutucu kontrolü hatası: {e}")
+        self.state["cooling"] = True
+        self.state["heating"] = False
+
+    def _humidify(self):
+        """Nemlendirme fonksiyonu"""
+        if not self.has_hardware:
+            self.logger.info("SİMÜLASYON: Nemlendirici açıldı")
+        else:
+            try:
+                # Nemlendirici kontrolü burada
+                pass
+            except Exception as e:
+                self.logger.error(f"Nemlendirici kontrolü hatası: {e}")
+
+        self.state["humidifier"] = True
+        self.state["dehumidifier"] = False
+
+        # Olay yayınla
+        if self.iot_client:
+            self.iot_client.publish_room_event("HUMIDITY_ACTION", "Nemlendirici açıldı")
+
+    def _dehumidify(self):
+        """Nem alma fonksiyonu"""
+        if not self.has_hardware:
+            self.logger.info("SİMÜLASYON: Nem alıcı açıldı")
+        else:
+            try:
+                # Nem alıcı kontrolü burada
+                pass
+            except Exception as e:
+                self.logger.error(f"Nem alıcı kontrolü hatası: {e}")
+
+        self.state["dehumidifier"] = True
+        self.state["humidifier"] = False
+
+        # Olay yayınla
+        if self.iot_client:
+            self.iot_client.publish_room_event("HUMIDITY_ACTION", "Nem alıcı açıldı")
+
+    def _turn_off_humidity_control(self):
+        """Nem kontrol cihazlarını kapatır"""
+        if not self.has_hardware:
+            self.logger.info("SİMÜLASYON: Nem kontrolü kapatıldı")
+        else:
+            try:
+                # Nem kontrol cihazlarını kapat
+                pass
+            except Exception as e:
+                self.logger.error(f"Nem kontrol kapatma hatası: {e}")
+
+        self.state["humidifier"] = False
+        self.state["dehumidifier"] = False
 
     def _turn_off(self):
         """İklimlendirmeyi kapatır"""
         if not self.has_hardware:
             self.logger.info("SİMÜLASYON: İklimlendirme kapatıldı")
-            return
+        else:
+            try:
+                # İklimlendirme cihazlarını kapat
+                pass
+            except Exception as e:
+                self.logger.error(f"İklimlendirme kapatma hatası: {e}")
 
-        try:
-            # İklimlendirme cihazlarını kapat
-            self.state["cooling"] = False
-            self.state["heating"] = False
-        except Exception as e:
-            self.logger.error(f"İklimlendirme kapatma hatası: {e}")
+        self.state["cooling"] = False
+        self.state["heating"] = False

@@ -15,6 +15,7 @@ class ActuatorManager:
         self.config = config
         self.has_hardware = config.has_hardware
         self.iot_client = None  # IoT istemci referansı
+        self.preferences = None
 
         # Alt kontrol birimleri
         from .climate import ClimateController
@@ -44,7 +45,7 @@ class ActuatorManager:
             self.logger.error(f"Çıktı cihazları yapılandırma hatası: {e}")
             return False
 
-    def set_iot_client(self, iot_client):
+    def set_iot_client(self, iot_client, preferences):
         """
         IoT istemcisini ayarlar
 
@@ -55,7 +56,7 @@ class ActuatorManager:
         # Alt kontrol birimlerine de IoT istemcisini geçir
         self.climate.set_iot_client(iot_client)
         self.ir_controller.set_iot_client(iot_client)
-        self.alert.set_iot_client(iot_client)
+        self.alert.set_iot_client(iot_client, preferences)
 
     def process_actions(self, actions):
         """AI Agent'tan gelen eylemleri işler"""

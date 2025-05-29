@@ -18,6 +18,12 @@ class IRController:
         self.config = config
         self.has_hardware = config.has_hardware
         self.ir_pin = config.gpio["IR_TRANSMITTER_PIN"]
+
+        # LED pinleri tanımlama
+        self.led_pins = {
+            "MAIN": config.gpio.get("LED_MAIN_PIN", 24),
+        }
+
         self.gpio = None
         self.device_codes_file = os.path.join(os.path.dirname(__file__), "ir_codes.json")
         self.device_codes = self._load_device_codes()
@@ -71,10 +77,39 @@ class IRController:
             import RPi.GPIO as GPIO
             self.gpio = GPIO
             self.gpio.setup(self.ir_pin, self.gpio.OUT)
+
+            # LED pinleri ayarı
+            for device_type, pin in self.led_pins.items():
+                if pin:
+                    self.gpio.setup(pin, self.gpio.OUT)
+                    self.logger.debug(f"{device_type} için LED pin {pin} ayarlandı")
+
             self.logger.info("IR verici başarıyla yapılandırıldı")
             return True
         except Exception as e:
             self.logger.error(f"IR verici başlatma hatası: {e}")
+            return False
+
+    def set_led_status(self, device_type, status):
+        """
+        Cihaz LED'ini açar veya kapatır
+
+        Args:
+            device_type: Cihaz tipi (tv, ac, vb.)
+            status: LED durumu (True=açık, False=kapalı)
+        """
+        if not self.has_hardware:
+            self.logger.debug(f"Simülasyon: {device_type} LED'i {'açıldı' if status else 'kapatıldı'}")
+            return True
+
+        try:
+            if device_type in self.led_pins and self.led_pins[device_type]:
+                self.gpio.output(self.led_pins[device_type], status)
+                self.logger.debug(f"{device_type} LED'i {'açıldı' if status else 'kapatıldı'}")
+                return True
+            return False
+        except Exception as e:
+            self.logger.error(f"LED kontrol hatası: {e}")
             return False
 
     def send_ir_signal(self, code):
@@ -147,6 +182,10 @@ class IRController:
 
             if command == "power":
                 new_status = self.device_status.get(device_key, False)
+
+                # Power komutunda LED'i de güncelle
+                self.set_led_status(device_type, new_status)
+
                 self.logger.info(
                     f"{device_type} durumu: {'açık' if new_status else 'kapalı'}")
 

@@ -18,10 +18,12 @@ class AlertController:
         self.speaker_pin = config.gpio["SPEAKER_PIN"]
         self.gpio = None
         self.iot_client = None
+        self.preferences = None
 
-    def set_iot_client(self, iot_client):
+    def set_iot_client(self, iot_client, preferences):
         """IoT istemcisini ayarlar"""
         self.iot_client = iot_client
+        self.preferences = preferences
 
     def setup(self):
         """Uyarı sistemini yapılandırır"""
@@ -57,24 +59,25 @@ class AlertController:
             return True
 
         try:
-            self.logger.info("Uyarı sesi çalınıyor...")
-            self.gpio.setup(self.speaker_pin, self.gpio.OUT)
-            pwm = self.gpio.PWM(self.speaker_pin, 1000)  # 1 kHz frekans
-            pwm.start(50)  # %50 görev döngüsü
+            if self.preferences and self.preferences.user_preferences.get("voiceReports", False):
+                self.logger.info("Uyarı sesi çalınıyor...")
+                self.gpio.setup(self.speaker_pin, self.gpio.OUT)
+                pwm = self.gpio.PWM(self.speaker_pin, 1000)  # 1 kHz frekans
+                pwm.start(50)  # %50 görev döngüsü
 
-            # Uyarı sesi çal
-            for _ in range(5):  # 5 bip
-                pwm.ChangeFrequency(1000)  # 1 kHz
-                time.sleep(0.2)
-                pwm.ChangeFrequency(500)  # 500 Hz
-                time.sleep(0.2)
+                # Uyarı sesi çal
+                for _ in range(5):  # 5 bip
+                    pwm.ChangeFrequency(1000)  # 1 kHz
+                    time.sleep(0.2)
+                    pwm.ChangeFrequency(500)  # 500 Hz
+                    time.sleep(0.2)
 
-            pwm.stop()
+                pwm.stop()
 
             # Olay geçmişine ekle
             if self.iot_client:
-                event_type = "ALERT_TRIGGERED"
-                description = "Uyarı sesi çalındı"
+                event_type = "ALERT"
+                description = "Tehlikeli gaz seviyesi tespit edildi."
                 self.iot_client.publish_room_event(event_type, description)
 
             return True

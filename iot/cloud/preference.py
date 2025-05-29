@@ -45,7 +45,20 @@ class PreferenceManager:
             new_preferences: Yeni tercih değerleri
         """
         if new_preferences:
+            old_preferences = self.user_preferences.copy()
             self.user_preferences.update(new_preferences)
+
+            # Sıcaklık veya nem tercihleri değiştiyse özel log
+            temp_changed = old_preferences.get("preferredTemperature") != self.user_preferences.get(
+                "preferredTemperature")
+            humidity_changed = old_preferences.get("preferredHumidity") != self.user_preferences.get(
+                "preferredHumidity")
+
+            if temp_changed or humidity_changed:
+                self.logger.info(f"İklimlendirme tercihleri güncellendi - "
+                                 f"Sıcaklık: {self.user_preferences.get('preferredTemperature')}°C, "
+                                 f"Nem: {self.user_preferences.get('preferredHumidity')}%")
+
             self.logger.info(f"Kullanıcı tercihleri güncellendi: {self.user_preferences}")
 
     def get_preference(self, key, default=None):
@@ -61,23 +74,23 @@ class PreferenceManager:
         """
         return self.user_preferences.get(key, default)
 
-    @deprecated("Yeni veri geldiğinde sistem otomatik olarak çekmekte, kullanıma gerek kalmadı.")
-    def fetch_preferences(self, force=False):
-        """
-        Bulut'tan kullanıcı tercihlerini alır
-
-        Args:
-            force: True ise zamanlama kontrolünü atlar ve zorla istek yapar
-
-        Returns:
-            dict: Güncel kullanıcı tercihleri
-        """
-        current_time = int(time.time())
-
-        # 5 dakikada bir tercihleri güncelle (çok sık istek göndermemek için)
-        # veya force=True ise hemen güncelle
-        if force or (current_time - self.last_fetch_time >= 300):
-            self.iot_client.request_user_preferences()
-            self.last_fetch_time = current_time
-
-        return self.user_preferences
+    # @deprecated("Yeni veri geldiğinde sistem otomatik olarak çekmekte, kullanıma gerek kalmadı.")
+    # def fetch_preferences(self, force=False):
+    #     """
+    #     Bulut'tan kullanıcı tercihlerini alır
+    #
+    #     Args:
+    #         force: True ise zamanlama kontrolünü atlar ve zorla istek yapar
+    #
+    #     Returns:
+    #         dict: Güncel kullanıcı tercihleri
+    #     """
+    #     current_time = int(time.time())
+    #
+    #     # 5 dakikada bir tercihleri güncelle (çok sık istek göndermemek için)
+    #     # veya force=True ise hemen güncelle
+    #     if force or (current_time - self.last_fetch_time >= 300):
+    #         self.iot_client.request_user_preferences()
+    #         self.last_fetch_time = current_time
+    #
+    #     return self.user_preferences
