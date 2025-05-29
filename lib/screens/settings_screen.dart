@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hotelmind/widgets/developer_drawer.dart';
+import 'package:hotelmind/models/UserPreferenceRoomMode.dart'; // UserPreferenceRoomMode importu eklendi
 
 import '../services/debug_log_provider.dart';
 import '../services/room_automation_service.dart';
@@ -30,9 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-
     _roomId = widget.roomId;
-
     _loadPreferences();
   }
 
@@ -55,24 +54,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         if (preferences != null) {
-          _preferredTemperature = preferences['preferredTemperature'];
-          _preferredHumidity = preferences['preferredHumidity'];
-          _autoClimate = preferences['autoClimate'];
-          _automaticLights = preferences['automaticLights'];
-          _voiceReports = preferences['voiceReports'];
-          _roomMode = preferences['roomMode'].toString();
+          log("Tercihler yüklendi: $preferences");
+
+          _preferredTemperature = preferences['preferredTemperature'] ?? 22.0;
+          _preferredHumidity = preferences['preferredHumidity'] ?? 50.0;
+          _autoClimate = preferences['autoClimate'] ?? true;
+          _automaticLights = preferences['automaticLights'] ?? true;
+          _voiceReports = preferences['voiceReports'] ?? true;
+
+          final dynamic roomModeValue = preferences['roomMode'];
+          if (roomModeValue is UserPreferenceRoomMode) {
+            _roomMode = roomModeValue.toString().split('.').last;
+          } else if (roomModeValue is String) {
+            _roomMode = roomModeValue;
+          } else {
+            // Eğer roomModeValue null veya beklenmedik bir tipte ise varsayılan değer kullanılır.
+            _roomMode = 'comfort';
+          }
+        } else {
+          // Tercihler null ise (servisten null döndü), varsayılan değerler ayarlanır.
+          _preferredTemperature = 22.0;
+          _preferredHumidity = 50.0;
+          _autoClimate = true;
+          _automaticLights = true;
+          _voiceReports = true;
+          _roomMode = 'comfort';
+          log("Kullanıcı tercihleri bulunamadı, varsayılanlar kullanılıyor.");
         }
         _isLoading = false;
       });
     } catch (e) {
       log("Tercihler yüklenirken hata: $e");
       setState(() {
+        // Hata durumunda da varsayılan değerler ve yükleme durumu ayarlanır.
+        _preferredTemperature = 22.0;
+        _preferredHumidity = 50.0;
+        _autoClimate = true;
+        _automaticLights = true;
+        _voiceReports = true;
+        _roomMode = 'comfort';
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Tercihler yüklenirken hata oluştu"))
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Tercihler yüklenirken hata oluştu"))
+        );
+      }
     }
   }
 
@@ -97,27 +125,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success
-                ? "Ayarlar başarıyla kaydedildi"
-                : "Ayarlar kaydedilirken hata oluştu"
-            ),
-            backgroundColor: success ? Colors.green : Colors.red,
-          )
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(success
+                  ? "Ayarlar başarıyla kaydedildi"
+                  : "Ayarlar kaydedilirken hata oluştu"
+              ),
+              backgroundColor: success ? Colors.green : Colors.red,
+            )
+        );
+      }
     } catch (e) {
       log("Tercihler kaydedilirken hata: $e");
       setState(() {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Ayarlar kaydedilirken hata oluştu"),
-            backgroundColor: Colors.red,
-          )
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Ayarlar kaydedilirken hata oluştu"),
+              backgroundColor: Colors.red,
+            )
+        );
+      }
     }
   }
 
@@ -132,17 +164,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           radius: 6,
           backgroundColor: Colors.grey.shade800.withValues(alpha: 0.7),
           child: IconButton(
-            icon: Icon(Icons.close, color: Colors.white),
+            icon: const Icon(Icons.close, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 900),
+            constraints: const BoxConstraints(maxWidth: 900),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -178,7 +210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
                   // Konfor Ayarları kartı
                   _buildSettingsCard(
@@ -190,15 +222,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // Tercih edilen sıcaklık
                         Row(
                           children: [
-                            Icon(Icons.thermostat_outlined, color: Colors.orange),
-                            SizedBox(width: 12),
+                            const Icon(Icons.thermostat_outlined, color: Colors.orange),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Tercih Edilen Sıcaklık: ${_preferredTemperature.toStringAsFixed(1)}°C',
-                                      style: TextStyle(fontWeight: FontWeight.bold)),
-                                  SizedBox(height: 8),
+                                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 8),
                                   Slider(
                                     value: _preferredTemperature,
                                     min: 18,
@@ -217,20 +249,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
                         // Tercih edilen nem
                         Row(
                           children: [
-                            Icon(Icons.water_drop_outlined, color: Colors.blue),
-                            SizedBox(width: 12),
+                            const Icon(Icons.water_drop_outlined, color: Colors.blue),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Tercih Edilen Nem: ${_preferredHumidity.toStringAsFixed(0)}%',
-                                      style: TextStyle(fontWeight: FontWeight.bold)),
-                                  SizedBox(height: 8),
+                                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 8),
                                   Slider(
                                     value: _preferredHumidity,
                                     min: 30,
@@ -252,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
                   // Oda Modu kartı
                   _buildSettingsCard(
@@ -269,7 +301,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: 'comfort',
                           groupValue: _roomMode,
                         ),
-                        Divider(),
+                        const Divider(),
                         _buildModeOption(
                           title: 'Ekonomi Modu',
                           subtitle: 'Enerji tasarrufu yapılır, konfor biraz azalır',
@@ -278,7 +310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: 'eco',
                           groupValue: _roomMode,
                         ),
-                        Divider(),
+                        const Divider(),
                         _buildModeOption(
                           title: 'Dışarıda Modu',
                           subtitle: 'Maksimum enerji tasarrufu, minimum sistemler aktif',
@@ -290,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
                   // Genel Ayarlar kartı
                   _buildSettingsCard(
@@ -307,7 +339,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: _autoClimate,
                           onChanged: (value) => setState(() => _autoClimate = value),
                         ),
-                        Divider(),
+                        const Divider(),
 
                         // Otomatik aydınlatma
                         _buildSwitchOption(
@@ -318,7 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: _automaticLights,
                           onChanged: (value) => setState(() => _automaticLights = value),
                         ),
-                        Divider(),
+                        const Divider(),
 
                         // Sesli bildirimler
                         _buildSwitchOption(
@@ -332,24 +364,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
 
                   // Kaydet butonu
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: _savePreferences,
-                      icon: Icon(Icons.save),
-                      label: Text('Ayarları Kaydet'),
+                      icon: const Icon(Icons.save),
+                      label: const Text('Ayarları Kaydet'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                        textStyle: TextStyle(fontSize: 18),
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        textStyle: const TextStyle(fontSize: 18),
                       ),
                     ),
                   ),
 
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -365,8 +397,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.code, size: 16),
-              SizedBox(width: 8),
+              const Icon(Icons.code, size: 16),
+              const SizedBox(width: 8),
               Text(
                 'Geliştirici Konsolu',
                 style: TextStyle(fontSize: 12, color: Colors.grey[700]),
@@ -396,20 +428,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Row(
               children: [
                 Icon(icon, color: Colors.blue, size: 28),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue),
                 ),
               ],
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Container(
               width: 40,
               height: 3,
               color: Colors.blue.shade200,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             content,
           ],
         ),
@@ -438,23 +470,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: iconColor),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(color: Colors.grey[600], fontSize: 14),
@@ -492,23 +524,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: iconColor),
           ),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
