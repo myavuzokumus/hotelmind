@@ -8,7 +8,6 @@ class Config:
 
     # Varsayılan değerler
     DEFAULT_CONFIG = {
-        "endpoint": "ab94wqqygdjhk-ats.iot.eu-central-1.amazonaws.com",
         "thingName": "room_001",
         "clientId": "room_001",
         "roomId": "room_001",
@@ -56,6 +55,17 @@ class Config:
         self.script_dir = Path(__file__).parent.parent.absolute()
         self.certs_dir = self.script_dir / "certs"
         self.config = self.DEFAULT_CONFIG.copy()
+
+        # Gizli konfigürasyonları git'ten bağımsız secrets.json dosyasından oku
+        secrets_file = self.certs_dir / "secrets.json"
+        if secrets_file.exists():
+            import json
+            try:
+                with open(secrets_file, 'r') as f:
+                    secrets = json.load(f)
+                    self.config.update(secrets)
+            except Exception as e:
+                logging.error(f"secrets.json okunamadı: {e}")
 
         # Sertifika yollarını ayarla
         self.config.update({

@@ -52,7 +52,9 @@ export const requestRoomControlFunctionHandler = defineFunction(
         'dynamodb:UpdateItem'
       ],
       resources: [
-        "arn:aws:dynamodb:eu-central-1:471112835770:table/RoomControl*"
+        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
+        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        "arn:aws:dynamodb:*:*:table/RoomControl*"
       ]
     }));
 
@@ -62,7 +64,9 @@ export const requestRoomControlFunctionHandler = defineFunction(
         'iot:Publish'
       ],
       resources: [
-        "arn:aws:iot:eu-central-1:471112835770:topic/room/*"
+        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
+        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        "arn:aws:iot:*:*:topic/room/*"
       ]
     }));
 

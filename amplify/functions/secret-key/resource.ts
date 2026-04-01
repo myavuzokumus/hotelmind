@@ -47,7 +47,9 @@ export const secretKeyFunctionHandler = defineFunction(
         'ssm:GetParameters'
       ],
       resources: [
-        "arn:aws:ssm:eu-central-1:471112835770:parameter/qr-generator/*"
+        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
+        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        "arn:aws:ssm:*:*:parameter/qr-generator/*"
       ]
     }));
 
@@ -57,7 +59,9 @@ export const secretKeyFunctionHandler = defineFunction(
         'iot:Publish'
       ],
       resources: [
-        "arn:aws:iot:eu-central-1:471112835770:topic/room/*"
+        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
+        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        "arn:aws:iot:*:*:topic/room/*"
       ]
     }));
 

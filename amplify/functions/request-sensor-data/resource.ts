@@ -50,7 +50,9 @@ export const requestSensorDataFunctionHandler = defineFunction(
         'dynamodb:Query'
       ],
       resources: [
-        "arn:aws:dynamodb:eu-central-1:471112835770:table/SensorData*"
+        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
+        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        "arn:aws:dynamodb:*:*:table/SensorData*"
       ]
     }));
 
@@ -60,7 +62,9 @@ export const requestSensorDataFunctionHandler = defineFunction(
         'iot:Publish'
       ],
       resources: [
-        "arn:aws:iot:eu-central-1:471112835770:topic/room/*"
+        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
+        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        "arn:aws:iot:*:*:topic/room/*"
       ]
     }));
 
