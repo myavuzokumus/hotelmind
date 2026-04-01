@@ -3,14 +3,14 @@ import random
 
 
 class CardReader:
-    """Kart okuyucu için sınıf"""
+    """Class for card reader"""
 
     def __init__(self, config):
         """
-        Kart okuyucuyu başlatır
+        Initializes the card reader
 
         Args:
-            config: Sistem konfigürasyonu
+            config: System configuration
         """
         self.logger = logging.getLogger("SmartRoom.CardReader")
         self.config = config
@@ -18,33 +18,33 @@ class CardReader:
         self.card_inserted = False
 
     def setup(self):
-        """Kart okuyucuyu yapılandırır"""
+        """Configures the card reader"""
         if not self.has_hardware:
-            self.logger.info("Simülasyon: Kart okuyucu simülasyon modunda")
+            self.logger.info("Simulation: Card reader in simulation mode")
             return True
 
         try:
-            # Gerçek kart okuyucu kodu buraya eklenebilir
-            self.logger.info("Kart okuyucu başarıyla yapılandırıldı")
+            # Real card reader code can be added here
+            self.logger.info("Card reader configured successfully")
             return True
 
         except Exception as e:
-            self.logger.error(f"Kart okuyucu başlatma hatası: {e}")
+            self.logger.error(f"Card reader initialization error: {e}")
             return False
 
     def read_sensor(self):
-        """Kart okuyucu durumunu okur"""
+        """Reads the card reader status"""
         if not self.has_hardware:
-            # %10 ihtimalle durumu değiştir
+            # 10% chance to change status
             if random.randint(1, 100) > 90:
                 self.card_inserted = not self.card_inserted
             return self.card_inserted
 
         try:
-            # Gerçek RFID okuyucu kodu buraya eklenebilir
-            # Bu örnek için rastgele değer döndürelim
+            # Real RFID reader code can be added here
+            # Let's return a random value for this example
             return self.card_inserted
 
         except Exception as e:
-            self.logger.error(f"Kart okuyucu okuma hatası: {e}")
+            self.logger.error(f"Card reader read error: {e}")
             return False

@@ -7,14 +7,14 @@ class NotFoundScreen extends ConsumerWidget {
 
   const NotFoundScreen({
     super.key,
-    this.message = 'Aradığınız sayfa bulunamadı veya erişim izniniz yok.'
+    this.message = 'The page you are looking for was not found or you do not have access permission.'
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sayfa Bulunamadı'),
+        title: const Text('Page Not Found'),
       ),
       body: Center(
         child: Column(
@@ -46,7 +46,7 @@ class NotFoundScreen extends ConsumerWidget {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               icon: const Icon(Icons.home),
-              label: const Text('Ana Sayfaya Dön'),
+              label: const Text('Return to Home Page'),
               onPressed: () {
                 ref.read(navigationServiceProvider).navigateToHome();
               },

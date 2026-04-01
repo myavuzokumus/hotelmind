@@ -31,21 +31,21 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
       });
 
       try {
-        // Log işlemi ekleyerek debug bilgisi
+        // Debug info by adding log operation
         ref.read(debugLogProvider.notifier).log(
-            "Admin girişi denendi: ${_emailController.text}");
+            "Admin login attempted: ${_emailController.text}");
 
-        // Burada gerçek giriş işlemleri yapılacak
-        await Future.delayed(Duration(seconds: 2)); // Giriş simülasyonu
+        // Actual login operations will be done here
+        await Future.delayed(Duration(seconds: 2)); // Login simulation
 
-        // Başarılı giriş
-        ref.read(debugLogProvider.notifier).log("Admin girişi başarılı");
+        // Successful login
+        ref.read(debugLogProvider.notifier).log("Admin login successful");
         Navigator.pushReplacementNamed(context, '/dashboard');
       } catch (e) {
-        // Hata durumunda
-        ref.read(debugLogProvider.notifier).log("Admin girişi başarısız: $e");
+        // In case of error
+        ref.read(debugLogProvider.notifier).log("Admin login failed: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Giriş başarısız: $e')),
+          SnackBar(content: Text('Login failed: $e')),
         );
       } finally {
         if (mounted) {
@@ -69,7 +69,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
             children: [
               const SizedBox(height: 20),
 
-              // Logo veya ikon
+              // Logo or icon
               Icon(
                 Icons.admin_panel_settings,
                 size: 80,
@@ -78,30 +78,30 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
 
               const SizedBox(height: 20),
 
-              // Başlık
+              // Title
               Text(
-                'Yetkili Giriş Paneli',
+                'Admin Login Panel',
                 style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
 
               const SizedBox(height: 30),
 
-              // E-posta giriş alanı
+              // Email input field
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: 'E-posta',
+                  labelText: 'Email',
                   prefixIcon: Icon(Icons.email),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Lütfen e-posta adresinizi girin';
+                    return 'Please enter your email address';
                   }
                   if (!value.contains('@')) {
-                    return 'Geçerli bir e-posta adresi girin';
+                    return 'Enter a valid email address';
                   }
                   return null;
                 },
@@ -109,21 +109,21 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
 
               const SizedBox(height: 16),
 
-              // Şifre giriş alanı
+              // Password input field
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
-                  labelText: 'Şifre',
+                  labelText: 'Password',
                   prefixIcon: Icon(Icons.lock),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Lütfen şifrenizi girin';
+                    return 'Please enter your password';
                   }
                   if (value.length < 6) {
-                    return 'Şifre en az 6 karakter olmalıdır';
+                    return 'Password must be at least 6 characters';
                   }
                   return null;
                 },
@@ -131,7 +131,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
 
               const SizedBox(height: 30),
 
-              // Giriş butonu
+              // Login button
               ElevatedButton(
                 onPressed: _isLoading ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
@@ -141,7 +141,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                 child: _isLoading
                     ? CircularProgressIndicator(color: Colors.white)
                     : Text(
-                  'Giriş Yap',
+                  'Login',
                   style: TextStyle(fontSize: 16),
                 ),
               ),

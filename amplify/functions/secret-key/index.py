@@ -11,7 +11,7 @@ def handler(event, context):
 
     try:
 
-        # Parameter Store'dan secret key'i al
+        # Get secret key from Parameter Store
         ssm_client = boto3.client('ssm')
         response = ssm_client.get_parameter(
             Name=f'/qr-generator/secret-key', #/qr-generator/{room_id}/secret-key
@@ -19,7 +19,7 @@ def handler(event, context):
         )
         secret_key = response['Parameter']['Value']
 
-        # Yanıt gönder
+        # Send response
         iot_client.publish(
             topic=f'room/{room_id}/secret/response',
             qos=1,
@@ -32,12 +32,12 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
-            'body': json.dumps('Secret key gönderildi')
+            'body': json.dumps('Secret key sent')
         }
 
     except Exception as e:
-        print(f"Hata: {str(e)}")
-        # Hata durumunda da yanıt gönder
+        print(f"Error: {str(e)}")
+        # Send response in case of error too
         if room_id:
             try:
                 iot_client.publish(
@@ -50,9 +50,9 @@ def handler(event, context):
                     })
                 )
             except Exception as publish_error:
-                print(f"IoT yayınlama hatası: {str(publish_error)}")
+                print(f"IoT publish error: {str(publish_error)}")
 
         return {
             'statusCode': 500,
-            'body': json.dumps(f'Hata: {str(e)}')
+            'body': json.dumps(f'Error: {str(e)}')
         }

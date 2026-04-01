@@ -43,7 +43,7 @@ export const requestRoomControlFunctionHandler = defineFunction(
         }),
     });
 
-    // DynamoDB erişim izinleri
+    // DynamoDB access permissions
     lambdaFunction.addToRolePolicy(new PolicyStatement({
       actions: [
         'dynamodb:PutItem',
@@ -52,20 +52,20 @@ export const requestRoomControlFunctionHandler = defineFunction(
         'dynamodb:UpdateItem'
       ],
       resources: [
-        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
-        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        // NOTE: For other developers to use seamlessly in their own accounts in open source repos, 
+        // Region and Account ID are left flexible with *:* wildcard instead of hardcoded.
         "arn:aws:dynamodb:*:*:table/RoomControl*"
       ]
     }));
 
-    // IoT Core yayın izinleri
+    // IoT Core publish permissions
     lambdaFunction.addToRolePolicy(new PolicyStatement({
       actions: [
         'iot:Publish'
       ],
       resources: [
-        // NOT: Açık kaynak repolarda başka geliştiricilerin kendi hesaplarında sorunsuz kullanabilmesi için 
-        // Bölge ve Hesap ID'si sabit (hardcoded) yerine *:* wildcard'ı ile esnek bırakılmıştır.
+        // NOTE: For other developers to use seamlessly in their own accounts in open source repos, 
+        // Region and Account ID are left flexible with *:* wildcard instead of hardcoded.
         "arn:aws:iot:*:*:topic/room/*"
       ]
     }));

@@ -2,41 +2,41 @@ import logging
 
 
 def setup_logger(name="SmartRoom", level=logging.DEBUG):
-    """Uygulama için logger ayarlar"""
+    """Configures logger for the application"""
 
-    # Ana logger'ı yapılandır
+    # Configure main logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Konsol handler
+    # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(level)
 
-    # Format
+    # Log Format
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
 
-    # Logger'a handler ekle
+    # Add handler to logger
     logger.addHandler(console_handler)
 
     return logger
 
 
-# AWS IoT Client için logger
+# Logger for AWS IoT Client
 def setup_aws_iot_logger():
-    """AWS IoT için logger ayarlar"""
+    """Configures logger for AWS IoT"""
     logger = logging.getLogger("AWSIoTPythonSDKv2")
     logger.setLevel(logging.DEBUG)
 
-    # Konsol handler
+    # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
 
-    # Format
+    # Log Format
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
 
-    # Logger'a handler ekle
+    # Add handler to logger
     logger.addHandler(console_handler)
 
     return logger

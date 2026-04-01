@@ -2,22 +2,22 @@ import logging
 
 
 class ActuatorManager:
-    """Tüm çıktı cihazlarını yöneten ana sınıf"""
+    """Main class to manage all output devices"""
 
     def __init__(self, config):
         """
-        Çıktı cihazlarını yönetecek sınıfı başlatır
+        Initializes the class to manage output devices
 
         Args:
-            config: Sistem konfigürasyonu
+            config: System configuration
         """
         self.logger = logging.getLogger("SmartRoom.ActuatorManager")
         self.config = config
         self.has_hardware = config.has_hardware
-        self.iot_client = None  # IoT istemci referansı
+        self.iot_client = None  # IoT client reference
         self.preferences = None
 
-        # Alt kontrol birimleri
+        # Sub-controllers
         from .climate import ClimateController
         from .alert import AlertController
         from .ir_controller import IRController
@@ -27,57 +27,57 @@ class ActuatorManager:
         self.ir_controller = IRController(config)
 
     def setup(self):
-        """Tüm çıktı cihazlarını yapılandırır"""
+        """Configures all output devices"""
         try:
-            # Alt birimleri yapılandır
+            # Configure sub-units
             climate_ok = self.climate.setup()
             alert_ok = self.alert.setup()
             ir_ok = self.ir_controller.setup()
 
             if self.has_hardware and not all([climate_ok, alert_ok, ir_ok]):
-                self.logger.warning("Bazı çıktı cihazları başlatılamadı")
+                self.logger.warning("Some output devices could not be initialized")
                 return False
 
-            self.logger.info("Tüm çıktı cihazları başarıyla yapılandırıldı")
+            self.logger.info("All output devices configured successfully")
             return True
 
         except Exception as e:
-            self.logger.error(f"Çıktı cihazları yapılandırma hatası: {e}")
+            self.logger.error(f"Output devices configuration error: {e}")
             return False
 
     def set_iot_client(self, iot_client, preferences):
         """
-        IoT istemcisini ayarlar
+        Sets the IoT client
 
         Args:
-            iot_client: AWS IoT istemcisi
+            iot_client: AWS IoT client
         """
         self.iot_client = iot_client
-        # Alt kontrol birimlerine de IoT istemcisini geçir
+        # Pass IoT client to sub-controllers too
         self.climate.set_iot_client(iot_client)
         self.ir_controller.set_iot_client(iot_client)
         self.alert.set_iot_client(iot_client, preferences)
 
     def process_actions(self, actions):
-        """AI Agent'tan gelen eylemleri işler"""
+        """Processes actions coming from AI Agent"""
         try:
             if "climate" in actions:
                 climate = actions["climate"]
-                self.logger.info(f"İklimlendirme ayarları: {climate}")
+                self.logger.info(f"Climate settings: {climate}")
                 self.climate.apply_settings(climate)
 
             if "security" in actions:
                 security = actions["security"]
-                self.logger.info(f"Güvenlik eylemleri: {security}")
+                self.logger.info(f"Security actions: {security}")
                 if security.get("warningActive", False):
                     self.alert.play_warning_sound()
 
             if "devices" in actions:
                 devices = actions["devices"]
-                self.logger.info(f"Cihaz kontrolleri: {devices}")
+                self.logger.info(f"Device controls: {devices}")
                 for device_type, commands in devices.items():
                     for command, value in commands.items():
                         self.ir_controller.control_device(device_type, command, value)
 
         except Exception as e:
-            self.logger.error(f"Eylem işleme hatası: {e}")
+            self.logger.error(f"Action processing error: {e}")

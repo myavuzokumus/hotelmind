@@ -8,98 +8,98 @@ from .card_reader import CardReader
 
 
 class SensorManager:
-    """Tüm sensörleri yöneten ana sınıf"""
+    """Main class managing all sensors"""
 
     def __init__(self, config):
         """
-        Sensör yöneticisini başlatır
+        Initializes the sensor manager
 
         Args:
-            config: Sistem konfigürasyonu
+            config: System configuration
         """
         self.logger = logging.getLogger("SmartRoom.SensorManager")
         self.config = config
         self.has_hardware = config.has_hardware
 
-        # Sensör durumları
+        # Sensor states
         self.sensor_data = {
             "timestamp": 0,
             "temperature": 22.0,
-            "pressure": 1013.25,  # Basınç değeri eklendi
-            "humidity": 50.0,  # Not: Şimdilik nem sensörü yok, simüle ediyoruz
+            "pressure": 1013.25,  # Pressure value added
+            "humidity": 50.0,  # Note: No humidity sensor for now, simulating
             "gasLevel": 0,
             "distance": 300.0,
-            "occupied": True,  # IR sensör durumu (True=dolu, False=boş)
+            "occupied": True,  # IR sensor status (True=occupied, False=empty)
             "cardInserted": False,
         }
 
-        # Sensörleri başlat
+        # Initialize sensors
         self.temperature_sensor = TemperatureSensor(config)
         self.gas_sensor = GasSensor(config)
         self.distance_sensor = DistanceSensor(config)
         self.card_reader = CardReader(config)
 
-        self.logger.info("Sensör yöneticisi başlatıldı")
+        self.logger.info("Sensor manager initialized")
 
     def setup_sensors(self):
-        """Tüm sensörleri yapılandırır"""
+        """Configures all sensors"""
         try:
-            # Tüm sensörleri başlat
+            # Initialize all sensors
             temperature_ok = self.temperature_sensor.setup()
             gas_ok = self.gas_sensor.setup()
             distance_ok = self.distance_sensor.setup()
             card_ok = self.card_reader.setup()
 
             if self.has_hardware and not all([temperature_ok, gas_ok, distance_ok, card_ok]):
-                self.logger.warning("Bazı sensörler başlatılamadı")
+                self.logger.warning("Some sensors could not be initialized")
                 return False
 
-            self.logger.info("Tüm sensörler başarıyla yapılandırıldı")
+            self.logger.info("All sensors configured successfully")
             return True
 
         except Exception as e:
-            self.logger.error(f"Sensör yapılandırma hatası: {e}")
+            self.logger.error(f"Sensor configuration error: {e}")
             return False
 
     def read_all_sensors(self):
-        """Tüm sensörlerden veri okur ve sensor_data sözlüğünü günceller"""
-        # Sıcaklık sensörü
+        """Reads data from all sensors and updates sensor_data dictionary"""
+        # Temperature sensor
         temp, pressure = self.temperature_sensor.read_sensor()
         if temp is not None:
             self.sensor_data["temperature"] = round(temp, 1)
         if pressure is not None:
             self.sensor_data["pressure"] = round(pressure, 1)
 
-        # Nem değeri - gerçek sensör olmadığından simüle edilir
-        # Daha gerçekçi bir nem değeri için sıcaklığa bağlı simulasyon
+        # Humidity value - simulated since there is no real sensor
+        # Temperature-dependent simulation for a more realistic humidity value
         self.sensor_data["humidity"] = max(30, min(70, 50 + (temp - 22.0) * 2)) if temp else 50.0
 
-        # MQ-2 gaz sensörü
+        # MQ-2 gas sensor
         gas_level = self.gas_sensor.read_sensor()
         self.sensor_data["gasLevel"] = gas_level
 
-        # HC-SR04 mesafe sensörü
+        # HC-SR04 distance sensor
         distance = self.distance_sensor.read_sensor()
         self.sensor_data["distance"] = round(distance, 1)
-        # Engel var mı?
-        self.sensor_data["occupied"] = round(distance, 1) < 150  # 150 < engel var / dolu
+        # Is there an obstacle?
+        self.sensor_data["occupied"] = round(distance, 1) < 150  # < 150 obstacle present / occupied
 
-        # Kart durumu
+        # Card status
         card_inserted = self.card_reader.read_sensor()
         self.sensor_data["cardInserted"] = card_inserted
 
-        # Zaman damgası
+        # Timestamp
         self.sensor_data["timestamp"] = int(time.time())
 
         return self.sensor_data
 
     def start_monitoring(self, callback, interval=10):
         """
-        Sensör izlemeyi başlatan yardımcı metod
+        Helper method to start sensor monitoring
 
         Args:
-            callback: Her sensör okumasından sonra çağrılacak fonksiyon
-            interval: Okumalar arası saniye cinsinden bekleme süresi
+            callback: Function to be called after each sensor reading
+            interval: Waiting time in seconds between readings
         """
 
         def monitor_thread():

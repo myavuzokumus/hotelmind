@@ -14,34 +14,34 @@ from awscrt import mqtt
 
 
 class QRCodeGenerator:
-    """Modern QR Kod Üreteci - Ana uygulama içinde kullanılmak üzere tasarlandı"""
+    """Modern QR Code Generator - Designed to be used within the main application"""
 
     def __init__(self, config, iot_client):
         """
-        QR Kod üretecini başlatır
+        Initializes the QR Code generator
 
         Args:
-            config: Sistem konfigürasyonu
-            iot_client: IoT bağlantısı için istemci
+            config: System configuration
+            iot_client: Client for IoT connection
         """
         self.logger = logging.getLogger("SmartRoom.QRGenerator")
         self.config = config
         self.iot_client = iot_client
 
-        # QR Kod yapılandırması
+        # QR Code configuration
         self.qr_config = {
             "roomId": config["roomId"],
-            "secret_key": None,  # MQTT ile alınacak
-            "qr_expiry_seconds": 10800,  # 3 saat geçerlilik
-            "qr_refresh_seconds": 240,  # 4 dakika yenileme
+            "secret_key": None,  # To be received via MQTT
+            "qr_expiry_seconds": 10800,  # 3 hours validity
+            "qr_refresh_seconds": 240,  # 4 minutes refresh
         }
 
-        # QR kod bilgileri
+        # QR code information
         self.current_qr = None
         self.current_data = None
         self.current_expiry = None
 
-        # UI bileşenleri
+        # UI components
         self.root = None
         self.qr_image = None
         self.time_label = None
@@ -49,22 +49,22 @@ class QRCodeGenerator:
         self.debug_text = None
         self.debug_frame = None
 
-        # Durum değişkenleri
+        # State variables
         self.is_secret_requested = False
         self.is_secret_received = False
         self.is_debug_visible = False
 
     def request_secret_key(self):
-        """Secret key istemek için MQTT üzerinden istek gönderir"""
+        """Sends request via MQTT to request secret key"""
         if not self.iot_client.mqtt_connection:
-            self.update_status("MQTT bağlantısı yok!", "error")
+            self.update_status("No MQTT connection!", "error")
             return False
 
         try:
-            self.update_status("Güvenlik anahtarı isteniyor...", "connecting")
+            self.update_status("Requesting security key...", "connecting")
             self.is_secret_requested = True
 
-            # MQTT üzerinden secret key isteme
+            # Requesting secret key via MQTT
             request_id = str(uuid.uuid4())
             request_topic = f"room/{self.config['roomId']}/secret/request"
             request_payload = json.dumps({
@@ -73,40 +73,40 @@ class QRCodeGenerator:
                 "clientId": f"{self.config['clientId']}_qr_generator"
             })
 
-            # İstek gönder
+            # Send request
             self.iot_client.mqtt_connection.publish(
                 topic=request_topic,
                 payload=request_payload,
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
 
-            self.logger.info(f"Secret key istendi, istek ID: {request_id}")
+            self.logger.info(f"Secret key requested, request ID: {request_id}")
             return True
 
         except Exception as e:
-            self.logger.error(f"Secret key isteme hatası: {e}")
-            self.update_status(f"Secret key isteme hatası: {str(e)}", "error")
+            self.logger.error(f"Secret key request error: {e}")
+            self.update_status(f"Secret key request error: {str(e)}", "error")
             return False
 
     def handle_secret_response(self, message):
-        """Secret key yanıtını işler"""
+        """Processes secret key response"""
         try:
             if "secretKey" in message:
                 self.qr_config["secret_key"] = message["secretKey"]
                 self.is_secret_received = True
-                self.update_status("Güvenlik anahtarı alındı", "success")
+                self.update_status("Security key received", "success")
                 self.update_qr_code()
             else:
-                self.update_status("Güvenlik anahtarı bulunamadı!", "error")
+                self.update_status("Security key not found!", "error")
 
         except Exception as e:
-            self.logger.error(f"Secret key işleme hatası: {e}")
-            self.update_status(f"Secret key işleme hatası: {str(e)}", "error")
+            self.logger.error(f"Secret key processing error: {e}")
+            self.update_status(f"Secret key processing error: {str(e)}", "error")
 
     def generate_signature(self, data_string):
-        """Veri için HMAC-SHA256 imzası oluşturur."""
+        """Generates HMAC-SHA256 signature for data."""
         if not self.qr_config["secret_key"]:
-            self.logger.error("İmza oluşturulamıyor: Güvenlik anahtarı mevcut değil")
+            self.logger.error("Cannot generate signature: Security key not available")
             return None
 
         key = bytes.fromhex(self.qr_config["secret_key"])
@@ -115,7 +115,7 @@ class QRCodeGenerator:
         return signature
 
     def generate_qr_data(self):
-        """QR kodunda kullanılacak veriyi oluşturur."""
+        """Generates data to be used in QR code."""
         if not self.qr_config["secret_key"]:
             return None
 
@@ -131,7 +131,7 @@ class QRCodeGenerator:
             "sessionId": session_id
         }
 
-        # İmza oluştur
+        # Generate signature
         data_string = f"{data['roomId']}:{data['timestamp']}:{data['expiry']}:{data['sessionId']}"
         signature = self.generate_signature(data_string)
 
@@ -142,15 +142,15 @@ class QRCodeGenerator:
         self.current_data = data
         self.current_expiry = refresh
 
-        # Debug bilgisi
-        self.logger.debug(f"Yeni QR kodu oluşturuldu: {json.dumps(data)}")
+        # Debug information
+        self.logger.debug(f"New QR code generated: {json.dumps(data)}")
         self.logger.debug(
-            f"Geçerlilik: {datetime.datetime.fromtimestamp(timestamp)} - {datetime.datetime.fromtimestamp(expiry)}")
+            f"Validity: {datetime.datetime.fromtimestamp(timestamp)} - {datetime.datetime.fromtimestamp(expiry)}")
 
         return data
 
     def generate_qr_code(self):
-        """QR kod resmi oluşturur."""
+        """Generates QR code image."""
         if not self.qr_config["secret_key"]:
             return None
 
@@ -158,11 +158,11 @@ class QRCodeGenerator:
         if not data:
             return None
 
-        # JSON verisini QR koda dönüştür
+        # Convert JSON data to QR code
         json_data = json.dumps(data)
         qr = qrcode.QRCode(
             version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_H,  # Daha yüksek hata düzeltme
+            error_correction=qrcode.constants.ERROR_CORRECT_H,  # Higher error correction
             box_size=10,
             border=4,
         )
@@ -174,22 +174,22 @@ class QRCodeGenerator:
         return img
 
     def is_qr_expired(self):
-        """QR kodun süresi dolmuş mu kontrol eder."""
+        """Checks if QR code is expired."""
         if self.current_expiry is None:
             return True
 
         return time.time() > self.current_expiry
 
     def create_ui(self):
-        """Modern UI arayüzünü oluşturur"""
+        """Creates Modern UI interface"""
         self.root = tk.Toplevel()
-        self.root.title(f"Akıllı Oda Erişimi - {self.qr_config['roomId']}")
+        self.root.title(f"Smart Room Access - {self.qr_config['roomId']}")
         self.root.geometry("480x720")
         self.root.minsize(400, 600)
         self.root.configure(bg="#ffffff")
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        # Tema ve renk şeması
+        # Theme and color scheme
         self.colors = {
             "primary": "#4361ee",
             "primary_dark": "#3a56d4",
@@ -203,31 +203,31 @@ class QRCodeGenerator:
             "accent": "#7209b7",
         }
 
-        # UI bileşenlerini oluştur
+        # Create UI components
         self._create_ui_components()
 
-        # İlk güncelleme
-        self.update_status("Başlatılıyor...", "connecting")
+        # Initial update
+        self.update_status("Initializing...", "connecting")
 
-        # Secret key iste
+        # Request secret key
         threading.Thread(target=self.request_secret_key, daemon=True).start()
 
-        # Timer başlat
+        # Start timer
         self.update_timer()
 
     def _create_ui_components(self):
-        """UI bileşenlerini oluşturur"""
-        # Ana çerçeve
+        """Creates UI components"""
+        # Main frame
         main_frame = tk.Frame(self.root, bg=self.colors["bg"])
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        # Başlık çerçevesi
+        # Header frame
         header_frame = tk.Frame(main_frame, bg=self.colors["bg"])
         header_frame.pack(fill=tk.X, pady=(0, 20))
 
         title = tk.Label(
             header_frame,
-            text="Akıllı Oda Erişimi",
+            text="Smart Room Access",
             font=("Segoe UI", 24, "bold"),
             fg=self.colors["primary"],
             bg=self.colors["bg"]
@@ -236,20 +236,20 @@ class QRCodeGenerator:
 
         subtitle = tk.Label(
             header_frame,
-            text=f"Oda Kimliği: {self.qr_config['roomId']}",
+            text=f"Room ID: {self.qr_config['roomId']}",
             font=("Segoe UI", 14),
             fg=self.colors["text_light"],
             bg=self.colors["bg"]
         )
         subtitle.pack()
 
-        # Durum çerçevesi
+        # Status frame
         status_frame = tk.Frame(main_frame, bg=self.colors["bg"])
         status_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.status_label = tk.Label(
             status_frame,
-            text="Hazırlanıyor...",
+            text="Preparing...",
             font=("Segoe UI", 12),
             fg=self.colors["text_light"],
             bg=self.colors["bg"],
@@ -257,7 +257,7 @@ class QRCodeGenerator:
         )
         self.status_label.pack()
 
-        # QR Kod çerçevesi - Kartlı tasarım
+        # QR Code frame - Card design
         qr_card_frame = tk.Frame(
             main_frame,
             bg=self.colors["bg_light"],
@@ -267,7 +267,7 @@ class QRCodeGenerator:
         )
         qr_card_frame.pack(fill=tk.BOTH, expand=True, pady=15)
 
-        # QR kod etiketi - kartvizit stili şeklinde
+        # QR code label - business card style
         self.qr_label = tk.Label(
             qr_card_frame,
             bg=self.colors["bg"],
@@ -275,27 +275,27 @@ class QRCodeGenerator:
         )
         self.qr_label.pack(fill=tk.BOTH, expand=True, padx=30, pady=30)
 
-        # Süre bilgisi
+        # Timer information
         timer_frame = tk.Frame(main_frame, bg=self.colors["bg"])
         timer_frame.pack(fill=tk.X, pady=10)
 
         self.time_label = tk.Label(
             timer_frame,
-            text="QR Kod Süresi: -- sn",
+            text="QR Code Timer: -- sec",
             font=("Segoe UI", 12),
             fg=self.colors["primary"],
             bg=self.colors["bg"]
         )
         self.time_label.pack()
 
-        # Butonlar için alt çerçeve
+        # Bottom frame for buttons
         button_frame = tk.Frame(main_frame, bg=self.colors["bg"])
         button_frame.pack(fill=tk.X, pady=20)
 
-        # Modern düz butonlar
+        # Modern flat buttons
         refresh_button = tk.Button(
             button_frame,
-            text="QR Kodu Yenile",
+            text="Refresh QR Code",
             font=("Segoe UI", 12, "bold"),
             fg="#ffffff",
             bg=self.colors["primary"],
@@ -311,7 +311,7 @@ class QRCodeGenerator:
 
         debug_button = tk.Button(
             button_frame,
-            text="Detayları Göster",
+            text="Show Details",
             font=("Segoe UI", 12),
             fg="#ffffff",
             bg=self.colors["accent"],
@@ -325,10 +325,10 @@ class QRCodeGenerator:
         )
         debug_button.pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=(5, 0))
 
-        # Talimat etiketi
+        # Instruction label
         instruction_label = tk.Label(
             main_frame,
-            text="Mobil uygulamayı açın ve yukarıdaki QR kodu taratın",
+            text="Open mobile app and scan the QR code above",
             font=("Segoe UI", 11),
             fg=self.colors["text_light"],
             bg=self.colors["bg"],
@@ -336,7 +336,7 @@ class QRCodeGenerator:
         )
         instruction_label.pack(pady=15)
 
-        # Debug bilgisi çerçevesi (başlangıçta gizli)
+        # Debug info frame (initially hidden)
         self.debug_frame = tk.Frame(main_frame, bg=self.colors["bg"])
 
         self.debug_text = tk.Text(
@@ -350,13 +350,13 @@ class QRCodeGenerator:
             relief="flat"
         )
         self.debug_text.pack(fill=tk.BOTH, expand=True, padx=0, pady=10)
-        self.debug_text.insert(tk.END, "QR kod içeriği burada görünecek...")
+        self.debug_text.insert(tk.END, "QR code content will appear here...")
 
-        # Pencere boyut değişimine tepki ver
+        # React to window size changes
         self.root.bind("<Configure>", self._on_resize)
 
     def _on_resize(self, event=None):
-        """Pencere yeniden boyutlandırıldığında QR kodu günceller"""
+        """Updates the QR code when window is resized"""
         if event and event.widget == self.root:
             if hasattr(self, '_resize_timer'):
                 self.root.after_cancel(self._resize_timer)
@@ -364,14 +364,14 @@ class QRCodeGenerator:
             self._resize_timer = self.root.after(200, self.update_qr_code)
 
     def _on_close(self):
-        """Pencere kapatıldığında çağrılır"""
-        self.logger.info("QR kod penceresi kapatıldı")
+        """Called when the window is closed"""
+        self.logger.info("QR code window closed")
         if self.root:
             self.root.destroy()
             self.root = None
 
     def update_status(self, message, status_type="info"):
-        """Durum etiketini günceller"""
+        """Updates the status label"""
         if not hasattr(self, 'status_label') or not self.status_label:
             return
 
@@ -390,83 +390,83 @@ class QRCodeGenerator:
             )
 
     def update_qr_code(self):
-        """QR kodunu günceller ve UI'a yerleştirir"""
+        """Updates the QR code and places it on UI"""
         if not self.root or not self.qr_label:
             return
 
         if not self.qr_config["secret_key"]:
-            # Güvenlik anahtarı yok, QR kodu yerine uyarı mesajı göster
+            # No secret key, show warning message instead of QR code
             self.qr_label.config(image="")
             self.qr_label.config(
-                text="Güvenlik anahtarı bekleniyor...\nLütfen bekleyin.",
+                text="Waiting for security key...\nPlease wait.",
                 font=("Segoe UI", 12),
                 fg=self.colors["warning"]
             )
             return
 
-        # QR kodu oluştur
+        # Generate QR code
         img = self.generate_qr_code()
         if not img:
-            self.logger.error("QR kodu oluşturulamadı")
+            self.logger.error("QR code could not be created")
             return
 
         try:
-            # Mevcut çerçeve boyutunu al
+            # Get current frame size
             width = self.qr_label.winfo_width()
             height = self.qr_label.winfo_height()
 
-            # Başlangıçta boyut sıfır olabilir, makul bir değerle başla
+            # Initial size might be zero, start with a reasonable value
             if width < 50 or height < 50:
                 width = height = 300
 
-            # QR kodunu en-boy oranını koruyarak yeniden boyutlandır
+            # Resize QR code while maintaining aspect ratio
             size = min(width, height) - 20
             img = img.resize((size, size), Image.LANCZOS)
 
-            # PIL görüntüsünü Tkinter PhotoImage'a dönüştür
+            # Convert PIL image to Tkinter PhotoImage
             tk_img = ImageTk.PhotoImage(img)
 
-            # QR kodu göster
+            # Show QR code
             self.qr_label.config(image=tk_img)
-            self.qr_label.image = tk_img  # Referansı koru
-            self.qr_label.config(text="")  # Metni temizle
+            self.qr_label.image = tk_img  # Keep the reference
+            self.qr_label.config(text="")  # Clear text
 
-            # Debug metni güncelle
+            # Update debug text
             if self.debug_text and self.current_data:
                 self.debug_text.delete(1.0, tk.END)
                 self.debug_text.insert(tk.END, json.dumps(self.current_data, indent=2))
 
         except Exception as e:
-            self.logger.error(f"QR kod güncelleme hatası: {e}")
+            self.logger.error(f"QR code update error: {e}")
 
     def update_timer(self):
-        """Zamanlayıcı etiketini günceller ve QR kodun geçerliliğini kontrol eder"""
+        """Updates timer label and checks QR code validity"""
         if not self.root or not self.time_label:
             return
 
         if self.current_expiry:
             remaining = max(0, int(self.current_expiry - time.time()))
-            self.time_label.config(text=f"QR Kod Süresi: {remaining} saniye")
+            self.time_label.config(text=f"QR Code Timer: {remaining} seconds")
 
-            # Süre dolmuşsa QR kodu yenile
+            # Refresh QR code if expired
             if remaining == 0 or self.is_qr_expired():
                 self.update_qr_code()
 
-        # Her saniye kendini yeniden çağır
+        # Call itself again every second
         if self.root:
             self.root.after(1000, self.update_timer)
 
     def force_refresh_qr(self):
-        """QR kodunu zorla yeniler"""
+        """Forces QR code refresh"""
         if not self.qr_config["secret_key"]:
             self.request_secret_key()
             return
 
         self.update_qr_code()
-        self.update_status("QR kodu yenilendi", "success")
+        self.update_status("QR code refreshed", "success")
 
     def toggle_debug_info(self):
-        """Debug bilgilerini göster/gizle"""
+        """Shows/hides debug information"""
         if self.is_debug_visible:
             self.debug_frame.pack_forget()
             self.is_debug_visible = False
@@ -475,7 +475,7 @@ class QRCodeGenerator:
             self.is_debug_visible = True
 
     def show(self):
-        """QR kod üretecini gösterir"""
+        """Shows the QR code generator"""
         if self.root:
             self.root.lift()
             self.root.focus_force()

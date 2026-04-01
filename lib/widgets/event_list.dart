@@ -26,7 +26,7 @@ class EventList extends StatelessWidget {
               Icon(Icons.event_busy, size: 48, color: Colors.grey.shade300),
               SizedBox(height: 16),
               Text(
-                'Henüz olay kaydı bulunmuyor',
+                'No event records yet',
                 style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
               ),
             ],
@@ -40,7 +40,7 @@ class EventList extends StatelessWidget {
       children: [
         if (showTitle) ...[
           const Text(
-            'Son Olaylar',
+            'Recent Events',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -75,9 +75,9 @@ class EventList extends StatelessWidget {
         : DateTime.now();
     final String formattedTime = DateFormat('HH:mm:ss').format(timestamp);
     final String formattedDate = DateFormat('dd/MM/yyyy').format(timestamp);
-    final description = event['description'] ?? event['details'] ?? 'Açıklama yok';
+    final description = event['description'] ?? event['details'] ?? 'No description';
 
-    // Olay tipine göre simge ve renk belirleme
+    // Determine icon and color based on event type
     IconData icon;
     Color color;
 
@@ -186,19 +186,19 @@ class EventList extends StatelessWidget {
   String _getEventTitle(String eventType) {
     switch(eventType) {
       case 'CLIMATE_ACTION':
-        return 'İklimlendirme İşlemi';
+        return 'Climate Action';
       case 'SECURITY_WARNING':
-        return 'Güvenlik Uyarısı';
+        return 'Security Warning';
       case 'ALERT':
-        return 'Alarm';
+        return 'Alert';
       case 'MODE_CHANGE':
-        return 'Mod Değişimi';
+        return 'Mode Change';
       case 'ENTRY':
-        return 'Giriş';
+        return 'Entry';
       case 'EXIT':
-        return 'Çıkış';
+        return 'Exit';
       default:
-        return 'Olay';
+        return 'Event';
     }
   }
 
@@ -212,7 +212,7 @@ class EventList extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Açıklama:'),
+              Text('Description:'),
               SizedBox(height: 8),
               Container(
                 width: double.infinity,
@@ -222,12 +222,12 @@ class EventList extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  event['description'] ?? event['details'] ?? 'Açıklama yok',
+                  event['description'] ?? event['details'] ?? 'No description',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               SizedBox(height: 16),
-              Text('Zaman:'),
+              Text('Time:'),
               SizedBox(height: 8),
               Container(
                 width: double.infinity,
@@ -241,14 +241,14 @@ class EventList extends StatelessWidget {
                       ? DateFormat('dd/MM/yyyy HH:mm:ss').format(
                       DateTime.fromMillisecondsSinceEpoch(event['timestamp'])
                   )
-                      : 'Bilinmiyor',
+                      : 'Unknown',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               if (event['details'] is Map || event['mode'] != null || event['value'] != null)
                 ...[
                   SizedBox(height: 16),
-                  Text('Ek Bilgiler:'),
+                  Text('Additional Info:'),
                   SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -270,7 +270,7 @@ class EventList extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Kapat'),
+            child: Text('Close'),
           ),
         ],
       ),
@@ -287,11 +287,11 @@ class EventList extends StatelessWidget {
     }
 
     if (event['mode'] != null) {
-      buffer.writeln('Mod: ${event['mode']}');
+      buffer.writeln('Mode: ${event['mode']}');
     }
 
     if (event['value'] != null) {
-      buffer.writeln('Değer: ${event['value']}');
+      buffer.writeln('Value: ${event['value']}');
     }
 
     return buffer.toString();

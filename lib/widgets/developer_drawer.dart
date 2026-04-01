@@ -1,4 +1,4 @@
-// Geliştirici Konsolu BottomSheet Widget'ı
+// Developer Console BottomSheet Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotelmind/services/debug_log_provider.dart';
@@ -40,7 +40,7 @@ class DeveloperConsoleSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Geliştirici Konsolu',
+                  'Developer Console',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -53,20 +53,20 @@ class DeveloperConsoleSheet extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child:           SwitchListTile(
-              title: Text('Geliştirici Modu'),
+              title: Text('Developer Mode'),
               value: isDeveloperMode,
               secondary: Icon(isDeveloperMode ? Icons.code : Icons.code_off),
               onChanged: (value) {
                 ref.read(developerModeProvider.notifier).state = value;
                 ref.read(debugLogProvider.notifier).log(
-                    "Geliştirici modu: ${value ? "Açık" : "Kapalı"}");
+                    "Developer mode: ${value ? "On" : "Off"}");
               },
             ),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
-              'Debug Logları',
+              'Debug Logs',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
@@ -82,7 +82,7 @@ class DeveloperConsoleSheet extends ConsumerWidget {
               child: logs.isEmpty
                   ? const Center(
                 child: Text(
-                  'Henüz log kaydı bulunmuyor.',
+                  'No logs yet.',
                   style: TextStyle(color: Colors.grey),
                 ),
               )
@@ -114,7 +114,7 @@ class DeveloperConsoleSheet extends ConsumerWidget {
                 backgroundColor: Colors.red,
               ),
               icon: Icon(Icons.delete),
-              label: Text('Logları Temizle'),
+              label: Text('Clear Logs'),
             ),
           ),
         ],

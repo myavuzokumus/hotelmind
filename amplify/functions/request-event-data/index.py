@@ -5,7 +5,7 @@ from boto3.dynamodb.conditions import Key
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-# DynamoDB tablosu adı
+# DynamoDB table name
 table_name = os.environ.get('DATA_TABLE', 'RoomEvent-23zg6kw7jvc7vd6hacyznny2w4-NONE')
 
 dynamodb = boto3.resource('dynamodb')
@@ -15,26 +15,26 @@ iot_client = boto3.client('iot-data')
 
 def handler(event, context):
     try:
-        print(f"Olay geçmişi isteği: {json.dumps(event)}")
+        print(f"Event history request: {json.dumps(event)}")
 
-        # İstek parametrelerini al
+        # Get request parameters
         room_id = event.get('roomId')
         request_id = event.get('requestId', 'unknown')
 
         if not room_id:
-            return {'error': 'roomId gereklidir'}
+            return {'error': 'roomId is required'}
 
-        # Son verileri al
+        # Get the latest data
         response = table.get_item(
             Key={
                 'roomId': room_id
             }
         )
 
-        # Yalnızca payload alanını al
+        # Get only the payload field
         item = response.get('Item', None)
 
-        # MQTT üzerinden yanıt gönder
+        # Send response via MQTT
         response_topic = f"room/{room_id}/events/history/response"
         message = {
             'requestId': request_id,
@@ -50,15 +50,15 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
-            'message': f"Yanıt {response_topic} konusuna gönderildi"
+            'message': f"Response sent to {response_topic} topic"
         }
 
     except Exception as e:
-        print(f"Hata: {str(e)}")
+        print(f"Error: {str(e)}")
         return {'error': str(e)}
 
 
-# JSON için özel encoder - Decimal değerlerini float'a dönüştürür
+# Custom encoder for JSON - converts Decimal values to float
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):

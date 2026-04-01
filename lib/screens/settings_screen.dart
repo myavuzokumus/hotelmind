@@ -19,7 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final RoomAutomationService _roomService = RoomAutomationService();
   late final String _roomId;
 
-  // Ayarlar
+  // Settings
   double _preferredTemperature = 22.0;
   double _preferredHumidity = 50.0;
   bool _autoClimate = true;
@@ -54,7 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         if (preferences != null) {
-          log("Tercihler yüklendi: $preferences");
+          log("Preferences loaded: $preferences");
 
           _preferredTemperature = preferences['preferredTemperature'] ?? 22.0;
           _preferredHumidity = preferences['preferredHumidity'] ?? 50.0;
@@ -68,25 +68,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           } else if (roomModeValue is String) {
             _roomMode = roomModeValue;
           } else {
-            // Eğer roomModeValue null veya beklenmedik bir tipte ise varsayılan değer kullanılır.
+            // If roomModeValue is null or an unexpected type, default value is used.
             _roomMode = 'comfort';
           }
         } else {
-          // Tercihler null ise (servisten null döndü), varsayılan değerler ayarlanır.
+          // If preferences are null (service returned null), default values are set.
           _preferredTemperature = 22.0;
           _preferredHumidity = 50.0;
           _autoClimate = true;
           _automaticLights = true;
           _voiceReports = true;
           _roomMode = 'comfort';
-          log("Kullanıcı tercihleri bulunamadı, varsayılanlar kullanılıyor.");
+          log("User preferences not found, using defaults.");
         }
         _isLoading = false;
       });
     } catch (e) {
-      log("Tercihler yüklenirken hata: $e");
+      log("Error loading preferences: $e");
       setState(() {
-        // Hata durumunda da varsayılan değerler ve yükleme durumu ayarlanır.
+        // In case of error, default values and loading state are set.
         _preferredTemperature = 22.0;
         _preferredHumidity = 50.0;
         _autoClimate = true;
@@ -98,7 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Tercihler yüklenirken hata oluştu"))
+            const SnackBar(content: Text("Error loading preferences"))
         );
       }
     }
@@ -129,15 +129,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(success
-                  ? "Ayarlar başarıyla kaydedildi"
-                  : "Ayarlar kaydedilirken hata oluştu"
+                  ? "Settings saved successfully"
+                  : "Error saving settings"
               ),
               backgroundColor: success ? Colors.green : Colors.red,
             )
         );
       }
     } catch (e) {
-      log("Tercihler kaydedilirken hata: $e");
+      log("Error saving preferences: $e");
       setState(() {
         _isLoading = false;
       });
@@ -145,7 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Ayarlar kaydedilirken hata oluştu"),
+              content: Text("Error saving settings"),
               backgroundColor: Colors.red,
             )
         );
@@ -180,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Başlık ve açıklama alanı
+                  // Title and description area
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -192,7 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text(
                           textAlign: TextAlign.center,
-                          'Kişisel Oda Tercihleri',
+                          'Personal Room Preferences',
                           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
                         ),
                         SizedBox(height: 8),
@@ -203,7 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         SizedBox(height: 16),
                         Text(
-                          'Oda ayarlarınızı kişiselleştirerek konforunuzu en üst düzeye çıkarın',
+                          'Personalize your room settings to maximize your comfort',
                           style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                           textAlign: TextAlign.center,
                         ),
@@ -212,14 +212,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Konfor Ayarları kartı
+                  // Comfort Settings card
                   _buildSettingsCard(
-                    title: 'Konfor Ayarları',
+                    title: 'Comfort Settings',
                     icon: Icons.thermostat,
                     content: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Tercih edilen sıcaklık
+                        // Preferred temperature
                         Row(
                           children: [
                             const Icon(Icons.thermostat_outlined, color: Colors.orange),
@@ -228,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Tercih Edilen Sıcaklık: ${_preferredTemperature.toStringAsFixed(1)}°C',
+                                  Text('Preferred Temperature: ${_preferredTemperature.toStringAsFixed(1)}°C',
                                       style: const TextStyle(fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 8),
                                   Slider(
@@ -251,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Tercih edilen nem
+                        // Preferred humidity
                         Row(
                           children: [
                             const Icon(Icons.water_drop_outlined, color: Colors.blue),
@@ -260,7 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Tercih Edilen Nem: ${_preferredHumidity.toStringAsFixed(0)}%',
+                                  Text('Preferred Humidity: ${_preferredHumidity.toStringAsFixed(0)}%',
                                       style: const TextStyle(fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 8),
                                   Slider(
@@ -286,16 +286,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Oda Modu kartı
+                  // Room Mode card
                   _buildSettingsCard(
-                    title: 'Oda Modu',
+                    title: 'Room Mode',
                     icon: Icons.home,
                     content: Column(
                       children: [
-                        // Oda modu seçimi
+                        // Room mode selection
                         _buildModeOption(
-                          title: 'Konfor Modu',
-                          subtitle: 'En rahat ortam sağlanır, enerji tüketimi daha yüksektir',
+                          title: 'Comfort Mode',
+                          subtitle: 'Provides the most comfortable environment, higher energy consumption',
                           icon: Icons.weekend,
                           iconColor: Colors.purple,
                           value: 'comfort',
@@ -303,8 +303,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const Divider(),
                         _buildModeOption(
-                          title: 'Ekonomi Modu',
-                          subtitle: 'Enerji tasarrufu yapılır, konfor biraz azalır',
+                          title: 'Economy Mode',
+                          subtitle: 'Saves energy, slightly reduced comfort',
                           icon: Icons.eco,
                           iconColor: Colors.green,
                           value: 'eco',
@@ -312,8 +312,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const Divider(),
                         _buildModeOption(
-                          title: 'Dışarıda Modu',
-                          subtitle: 'Maksimum enerji tasarrufu, minimum sistemler aktif',
+                          title: 'Away Mode',
+                          subtitle: 'Maximum energy saving, minimum active systems',
                           icon: Icons.directions_walk,
                           iconColor: Colors.orange,
                           value: 'away',
@@ -324,16 +324,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Genel Ayarlar kartı
+                  // General Settings card
                   _buildSettingsCard(
-                    title: 'Genel Ayarlar',
+                    title: 'General Settings',
                     icon: Icons.settings,
                     content: Column(
                       children: [
-                        // Otomatik iklimlendirme
+                        // Auto climate
                         _buildSwitchOption(
-                          title: 'Otomatik İklimlendirme',
-                          subtitle: 'Oda sıcaklığını otomatik ayarlar',
+                          title: 'Auto Climate',
+                          subtitle: 'Automatically adjusts room temperature',
                           icon: Icons.ac_unit,
                           iconColor: Colors.lightBlue,
                           value: _autoClimate,
@@ -341,10 +341,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const Divider(),
 
-                        // Otomatik aydınlatma
+                        // Auto lighting
                         _buildSwitchOption(
-                          title: 'Otomatik Aydınlatma',
-                          subtitle: 'Oda ışıklarını otomatik kontrol eder',
+                          title: 'Automatic Lighting',
+                          subtitle: 'Automatically controls room lights',
                           icon: Icons.lightbulb_outline,
                           iconColor: Colors.amber,
                           value: _automaticLights,
@@ -352,10 +352,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const Divider(),
 
-                        // Sesli bildirimler
+                        // Voice reports
                         _buildSwitchOption(
-                          title: 'Sesli Bildirimler',
-                          subtitle: 'Odaya girişte durum özeti sunar',
+                          title: 'Voice Reports',
+                          subtitle: 'Provides status summary upon entering room',
                           icon: Icons.volume_up,
                           iconColor: Colors.green,
                           value: _voiceReports,
@@ -366,12 +366,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Kaydet butonu
+                  // Save button
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: _savePreferences,
                       icon: const Icon(Icons.save),
-                      label: const Text('Ayarları Kaydet'),
+                      label: const Text('Save Settings'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
@@ -388,7 +388,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-      // Geliştirici konsolu tetikleyici butonu
+      // Developer console trigger button
       bottomNavigationBar: Container(
         height: 40,
         color: Colors.grey[200],
@@ -400,7 +400,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Icon(Icons.code, size: 16),
               const SizedBox(width: 8),
               Text(
-                'Geliştirici Konsolu',
+                'Developer Console',
                 style: TextStyle(fontSize: 12, color: Colors.grey[700]),
               ),
             ],
@@ -410,7 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Ayar kartı oluşturan yardımcı metod
+  // Helper method to create settings card
   Widget _buildSettingsCard({
     required String title,
     required IconData icon,
@@ -449,7 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Mod seçim widgetı
+  // Mode selection widget
   Widget _buildModeOption({
     required String title,
     required String subtitle,
@@ -510,7 +510,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Switch seçim widgetı
+  // Switch selection widget
   Widget _buildSwitchOption({
     required String title,
     required String subtitle,

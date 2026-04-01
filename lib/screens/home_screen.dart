@@ -54,7 +54,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     const Text(
                       textAlign: TextAlign.center,
-                      'Akıllı Oda Yönetimi',
+                      'Smart Room Management',
                       style: TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
@@ -63,7 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Versiyon: $_appVersion (Build: $_buildNumber)',
+                      'Version: $_appVersion (Build: $_buildNumber)',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
@@ -81,7 +81,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         textStyle: const TextStyle(fontSize: 18),
                       ),
                       icon: Icon(ref.watch(isAuthenticatedProvider) ? Icons.dashboard : Icons.qr_code_scanner),
-                      label: Text(ref.watch(isAuthenticatedProvider) ? 'Yönetim Paneline Git' : 'QR Kod ile Oda Girişi'),
+                      label: Text(ref.watch(isAuthenticatedProvider) ? 'Go to Control Panel' : 'Room Entry with QR Code'),
                     ),
                   ],
                 ),
@@ -95,7 +95,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Text(
-                    'Sistem Özellikleri',
+                    'System Features',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -109,23 +109,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       _buildFeatureCard(
                         icon: Icons.meeting_room,
-                        title: 'Akıllı Oda Kontrolü',
-                        description: 'Oda içindeki tüm sistemleri tek noktadan yönetin.',
+                        title: 'Smart Room Control',
+                        description: 'Manage all systems in the room from a single point.',
                       ),
                       _buildFeatureCard(
                         icon: Icons.sensors,
-                        title: 'Canlı Sensör Takibi',
-                        description: 'Sıcaklık, nem ve hava kalitesini gerçek zamanlı izleyin.',
+                        title: 'Live Sensor Tracking',
+                        description: 'Monitor temperature, humidity, and air quality in real-time.',
                       ),
                       _buildFeatureCard(
                         icon: Icons.history,
-                        title: 'Olay Geçmişi',
-                        description: 'Odada gerçekleşen tüm olayları takip edin.',
+                        title: 'Event History',
+                        description: 'Track all events happening in the room.',
                       ),
                       _buildFeatureCard(
                         icon: Icons.analytics,
-                        title: 'Yapay Zeka',
-                        description: 'Alışkanlıklarınıza göre odanızı optimize edin.',
+                        title: 'Artificial Intelligence',
+                        description: 'Optimize your room according to your habits.',
                       ),
                     ],
                   ),

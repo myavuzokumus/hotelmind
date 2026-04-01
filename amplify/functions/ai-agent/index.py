@@ -4,31 +4,31 @@ import datetime
 from decimal import Decimal
 import os
 
-# AWS bölgesini ortam değişkeninden al
+# Get AWS region from environment variable
 AWS_REGION = os.environ.get('AWS_REGION', 'eu-central-1')
 
-# AWS servisleri - bölge belirterek başlat
+# Initialize AWS services specifying region
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 iot = boto3.client('iot-data', region_name=AWS_REGION)
 polly = boto3.client('polly', region_name=AWS_REGION)
 sns = boto3.client('sns', region_name=AWS_REGION)
 
-# DynamoDB tabloları
+# DynamoDB tables
 sensor_table = dynamodb.Table('SensorData')
 events_table = dynamodb.Table('RoomEvents')
 preferences_table = dynamodb.Table('UserPreferences')
 
-# Ayarlar
-ROOM_EMPTY_THRESHOLD = 150  # cm (mesafe sensörü için)
+# Settings
+ROOM_EMPTY_THRESHOLD = 150  # cm (for distance sensor)
 TEMPERATURE_COMFORT = 22.0  # Celsius
 HUMIDITY_COMFORT = 50.0     # %
-GAS_ALERT_THRESHOLD = 5     # 0-10 arası gaz seviyesi
+GAS_ALERT_THRESHOLD = 5     # gas level between 0-10
 
-# Ortam değişkenlerinden kaynakları al
+# Get resources from environment variables
 NOTIFICATION_TOPIC = os.environ.get('NOTIFICATION_TOPIC', 'arn:aws:sns:eu-central-1:471112835770:smart-room-system-alerts-dev')
 ASSETS_BUCKET = os.environ.get('ASSETS_BUCKET_NAME', 'smart-room-system-assets-dev')
 
-# JSON serileştirme yardımcısı
+# JSON serialization helper
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
@@ -37,11 +37,11 @@ class DecimalEncoder(json.JSONEncoder):
 
 def handler(event, context):
     """
-    Bu Lambda fonksiyonu, sensör verilerini alır, durumu analiz eder ve
-    gerekli kararları verir.
+    This Lambda function receives sensor data, analyzes the state, and
+    makes necessary decisions.
     """
     try:
-        # Gelen verileri analiz et
+        # Analyze incoming data
         room_id = event['deviceId']
         temperature = float(event.get('temperature', 22.0))
         humidity = float(event.get('humidity', 50.0))
@@ -50,22 +50,22 @@ def handler(event, context):
         card_inserted = bool(event.get('cardInserted', False))
         timestamp = event.get('timestamp', int(datetime.datetime.now().timestamp() * 1000))
 
-        # Kişi tespiti
+        # Person detection
         person_detected = distance < ROOM_EMPTY_THRESHOLD
 
-        # Durum değerlendirmesi
+        # State assessment
         room_state = analyze_room_state(room_id, temperature, humidity, gas_level, distance, card_inserted, person_detected)
 
-        # AI karar mekanizması
+        # AI decision mechanism
         actions = make_decisions(room_id, room_state)
 
-        # Kararları uygula
+        # Apply decisions
         apply_decisions(room_id, actions)
 
-        # Durumu kaydet
+        # Save state
         save_room_state(room_id, room_state, timestamp)
 
-        # Güvenlik kontrolü
+        # Security check
         security_check(room_id, person_detected, card_inserted)
 
         return {
@@ -86,26 +86,26 @@ def handler(event, context):
 
 def analyze_room_state(room_id, temperature, humidity, gas_level, distance, card_inserted, person_detected):
     """
-    Oda durumunu analiz eder ve bir durum raporu oluşturur
+    Analyzes room state and creates a state report
     """
-    # Kullanıcı tercihlerini al
+    # Get user preferences
     user_prefs = get_user_preferences(room_id)
 
-    # Sıcaklık değerlendirmesi
+    # Temperature assessment
     temp_pref = user_prefs.get('preferredTemperature', TEMPERATURE_COMFORT)
     temp_diff = abs(temperature - temp_pref)
     temp_status = "optimal" if temp_diff < 1.5 else "suboptimal"
 
-    # Nem değerlendirmesi
+    # Humidity assessment
     humidity_status = "optimal" if 40 <= humidity <= 60 else "suboptimal"
 
-    # Gaz seviyesi değerlendirmesi
+    # Gas level assessment
     gas_status = "normal"
     if gas_level > GAS_ALERT_THRESHOLD:
         gas_status = "alert"
-        create_alert(room_id, f"Yüksek gaz seviyesi tespit edildi: {gas_level}/10")
+        create_alert(room_id, f"High gas level detected: {gas_level}/10")
 
-    # Durum raporu
+    # State report
     room_state = {
         'occupied': person_detected,
         'cardInserted': card_inserted,
@@ -129,17 +129,17 @@ def analyze_room_state(room_id, temperature, humidity, gas_level, distance, card
 
 def make_decisions(room_id, room_state):
     """
-    Oda durumuna göre AI kararları alır
+    Makes AI decisions based on room state
     """
     actions = {}
 
-    # Kişi odada mı?
+    # Is person in the room?
     occupied = room_state['occupied']
     card_inserted = room_state['cardInserted']
 
-    # İklimlendirme kararları
+    # Climate control decisions
     if occupied:
-        # Kişi odadaysa konfor moduna geç
+        # Switch to comfort mode if person is in room
         target_temp = room_state['temperature']['targetValue']
         actions['climate'] = {
             'mode': 'comfort',
@@ -147,21 +147,21 @@ def make_decisions(room_id, room_state):
             'fanSpeed': 'auto'
         }
     else:
-        # Kişi odada değilse enerji tasarruf moduna geç
+        # Switch to energy saving mode if person is not in room
         actions['climate'] = {
             'mode': 'eco',
             'targetTemperature': 26.0 if room_state['temperature']['value'] < 30 else 24.0,
             'fanSpeed': 'low'
         }
 
-    # Güvenlik kararları
+    # Security decisions
     if room_state['securityStatus'] == "warning":
         actions['security'] = {
             'warningActive': True,
-            'notifyReception': False  # 15 saniyelik süre dolmadı henüz
+            'notifyReception': False  # 15 seconds period hasn't expired yet
         }
 
-    # Gaz algılama kararları
+    # Gas detection decisions
     if room_state['gasLevel']['status'] == "alert":
         actions['ventilation'] = {
             'mode': 'high',
@@ -172,9 +172,9 @@ def make_decisions(room_id, room_state):
 
 def apply_decisions(room_id, actions):
     """
-    AI kararlarını uygular
+    Applies AI decisions
     """
-    # IoT cihazlarına komut gönder
+    # Send command to IoT devices
     payload = json.dumps({
         'roomId': room_id,
         'actions': actions
@@ -191,7 +191,7 @@ def apply_decisions(room_id, actions):
 
 def save_room_state(room_id, room_state, timestamp):
     """
-    Oda durumunu DynamoDB'ye kaydeder
+    Saves room state to DynamoDB
     """
     sensor_table.put_item(
         Item={
@@ -203,28 +203,28 @@ def save_room_state(room_id, room_state, timestamp):
 
 def security_check(room_id, person_detected, card_inserted):
     """
-    Güvenlik durumunu kontrol eder
+    Checks security status
     """
     if person_detected and not card_inserted:
-        # Kişi odada ama kart takılı değil - uyarı başlat
+        # Person in room but card not inserted - start warning
         event_data = {
             'roomId': room_id,
             'eventType': 'SECURITY_WARNING',
             'timestamp': int(datetime.datetime.now().timestamp() * 1000),
-            'description': 'Kart takılmadan odada kişi tespit edildi',
+            'description': 'Person detected in room without card inserted',
             'resolved': False
         }
 
         events_table.put_item(Item=event_data)
 
-        # 15 saniye sonra kontrol etmek için bir event programla
-        # Gerçek uygulamada Step Functions kullanılabilir
+        # Schedule an event to check after 15 seconds
+        # In a real application, Step Functions could be used
 
 def create_alert(room_id, message):
     """
-    Uyarı oluşturur ve bildirim gönderir
+    Creates an alert and sends a notification
     """
-    # Olay kaydı
+    # Event record
     event_data = {
         'roomId': room_id,
         'eventType': 'ALERT',
@@ -235,7 +235,7 @@ def create_alert(room_id, message):
 
     events_table.put_item(Item=event_data)
 
-    # SMS/Email bildirimi gönder
+    # Send SMS/Email notification
     sns.publish(
         TopicArn=NOTIFICATION_TOPIC,
         Message=f"Alert from Room {room_id}: {message}",
@@ -244,7 +244,7 @@ def create_alert(room_id, message):
 
 def get_user_preferences(room_id):
     """
-    Kullanıcı tercihlerini veritabanından alır
+    Retrieves user preferences from database
     """
     try:
         response = preferences_table.get_item(
@@ -264,18 +264,18 @@ def get_user_preferences(room_id):
 
 def generate_voice_summary(room_id, events):
     """
-    Kullanıcı için sesli özet rapor oluşturur
+    Generates a voice summary report for the user
     """
-    # Son olayları özetle
-    summary_text = "Hoş geldiniz. "
+    # Summarize recent events
+    summary_text = "Welcome. "
 
-    # Sıcaklık ve nem bilgisi
+    # Temperature and humidity info
     try:
-        # Son okunan sensör verilerini al
+        # Get last read sensor data
         response = sensor_table.query(
             KeyConditionExpression=boto3.dynamodb.conditions.Key('roomId').eq(room_id),
             Limit=1,
-            ScanIndexForward=False  # en yeniden en eskiye sırala
+            ScanIndexForward=False  # sort from newest to oldest
         )
 
         if response['Items']:
@@ -286,46 +286,46 @@ def generate_voice_summary(room_id, events):
             humidity = state.get('humidity', {}).get('value')
 
             if temp and humidity:
-                summary_text += f"Mevcut oda sıcaklığı {temp:.1f} derece, nem oranı yüzde {humidity:.1f}. "
+                summary_text += f"Current room temperature is {temp:.1f} degrees, humidity is {humidity:.1f} percent. "
     except Exception as e:
         print(f"Error retrieving sensor data: {str(e)}")
 
-    # Yokluğunuzda yapılan işlemleri özetle
+    # Summarize actions taken in your absence
     if events:
-        summary_text += "Yokluğunuzda, "
+        summary_text += "In your absence, "
 
         climate_actions = [e for e in events if e.get('eventType') == 'CLIMATE_ACTION']
         if climate_actions:
-            summary_text += f"oda sıcaklığı {len(climate_actions)} kez ayarlandı. "
+            summary_text += f"room temperature was adjusted {len(climate_actions)} times. "
 
         alerts = [e for e in events if e.get('eventType') == 'ALERT']
         if alerts:
-            summary_text += f"{len(alerts)} adet uyarı oluştu. "
+            summary_text += f"{len(alerts)} alerts occurred. "
 
-            # Önemli uyarıları detaylandır
+            # Detail important alerts
             gas_alerts = [a for a in alerts if 'gaz' in a.get('description', '').lower()]
             if gas_alerts:
-                summary_text += f"Bunlardan {len(gas_alerts)} tanesi yüksek gaz seviyesi ile ilgiliydi. "
+                summary_text += f"Of these, {len(gas_alerts)} were related to high gas level. "
     else:
-        summary_text += "yokluğunuzda herhangi bir olay gerçekleşmedi. "
+        summary_text += "no events occurred in your absence. "
 
-    summary_text += "İyi günler dilerim."
+    summary_text += "Have a good day."
 
-    # Metni sese çevir
+    # Convert text to speech
     response = polly.synthesize_speech(
         Text=summary_text,
         OutputFormat='mp3',
-        VoiceId='Filiz'  # Türkçe kadın sesi
+        VoiceId='Joanna'  # English female voice
     )
 
-    # MP3 dosyasını S3'e kaydet
+    # Save MP3 file to S3
     if 'AudioStream' in response:
         s3 = boto3.client('s3')
         audio_file_key = f"voice_summaries/{room_id}/{int(datetime.datetime.now().timestamp())}.mp3"
 
         s3.upload_fileobj(
             response['AudioStream'],
-            'smart-room-assets-bucket',  # S3 bucket adı
+            'smart-room-assets-bucket',  # S3 bucket name
             audio_file_key
         )
 

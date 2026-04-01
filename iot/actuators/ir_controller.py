@@ -5,21 +5,21 @@ import os
 
 
 class IRController:
-    """Kızılötesi cihaz kontrol sınıfı"""
+    """Class for infrared device control"""
 
     def __init__(self, config):
         """
-        IR kontrol cihazını başlatır
+        Initializes the IR controller
 
         Args:
-            config: Sistem konfigürasyonu
+            config: System configuration
         """
         self.logger = logging.getLogger("SmartRoom.IRController")
         self.config = config
         self.has_hardware = config.has_hardware
         self.ir_pin = config.gpio["IR_TRANSMITTER_PIN"]
 
-        # LED pinleri tanımlama
+        # Define LED pins
         self.led_pins = {
             "MAIN": config.gpio.get("LED_MAIN_PIN", 24),
         }
@@ -31,17 +31,17 @@ class IRController:
         self.iot_client = None
 
     def set_iot_client(self, iot_client):
-        """IoT istemcisini ayarlar"""
+        """Sets the IoT client"""
         self.iot_client = iot_client
 
     def _load_device_codes(self):
-        """IR cihaz kodları dosyasını yükler"""
+        """Loads the IR device codes file"""
         try:
             if os.path.exists(self.device_codes_file):
                 with open(self.device_codes_file, 'r') as file:
                     return json.load(file)
             else:
-                # Varsayılan kodları oluştur
+                # Generate default codes
                 default_codes = {
                     "tv": {
                         "power": [9000, 4500, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 560, 560, 560, 560, 560,
@@ -64,13 +64,13 @@ class IRController:
                     json.dump(default_codes, file, indent=4)
                 return default_codes
         except Exception as e:
-            self.logger.error(f"IR kodları yükleme hatası: {e}")
+            self.logger.error(f"IR codes load error: {e}")
             return {}
 
     def setup(self):
-        """IR vericisini yapılandırır"""
+        """Configures the IR transmitter"""
         if not self.has_hardware:
-            self.logger.info("Simülasyon modu: IR verici simüle ediliyor")
+            self.logger.info("Simulation mode: IR transmitter is simulated")
             return True
 
         try:
@@ -78,172 +78,172 @@ class IRController:
             self.gpio = GPIO
             self.gpio.setup(self.ir_pin, self.gpio.OUT)
 
-            # LED pinleri ayarı
+            # LED pin configuration
             for device_type, pin in self.led_pins.items():
                 if pin:
                     self.gpio.setup(pin, self.gpio.OUT)
-                    self.logger.debug(f"{device_type} için LED pin {pin} ayarlandı")
+                    self.logger.debug(f"LED pin {pin} configured for {device_type}")
 
-            self.logger.info("IR verici başarıyla yapılandırıldı")
+            self.logger.info("IR transmitter configured successfully")
             return True
         except Exception as e:
-            self.logger.error(f"IR verici başlatma hatası: {e}")
+            self.logger.error(f"IR transmitter initialization error: {e}")
             return False
 
     def set_led_status(self, device_type, status):
         """
-        Cihaz LED'ini açar veya kapatır
+        Turns the device LED on or off
 
         Args:
-            device_type: Cihaz tipi (tv, ac, vb.)
-            status: LED durumu (True=açık, False=kapalı)
+            device_type: Device type (tv, ac, etc.)
+            status: LED status (True=on, False=off)
         """
         if not self.has_hardware:
-            self.logger.debug(f"Simülasyon: {device_type} LED'i {'açıldı' if status else 'kapatıldı'}")
+            self.logger.debug(f"Simulation: {device_type} LED {'turned on' if status else 'turned off'}")
             return True
 
         try:
             if device_type in self.led_pins and self.led_pins[device_type]:
                 self.gpio.output(self.led_pins[device_type], status)
-                self.logger.debug(f"{device_type} LED'i {'açıldı' if status else 'kapatıldı'}")
+                self.logger.debug(f"{device_type} LED {'turned on' if status else 'turned off'}")
                 return True
             return False
         except Exception as e:
-            self.logger.error(f"LED kontrol hatası: {e}")
+            self.logger.error(f"LED control error: {e}")
             return False
 
     def send_ir_signal(self, code):
         """
-        IR sinyali gönderir
+        Sends IR signal
 
         Args:
-            code: IR sinyal kodu (mikrosaniyelik aralıklar listesi)
+            code: IR signal code (list of intervals in microseconds)
         """
         if not self.has_hardware:
-            self.logger.debug(f"Simülasyon modu: IR sinyal gönderiliyor: {code[:5]}...")
+            self.logger.debug(f"Simulation mode: Sending IR signal: {code[:5]}...")
             return True
 
         try:
-            # Normalde burada pigpio veya LIRC gibi kütüphaneleri kullanmak daha doğru olacaktır
-            # Bu basitleştirilmiş bir implementasyondur
+            # Normally it would be more accurate to use libraries like pigpio or LIRC here
+            # This is a simplified implementation
             for i, pulse in enumerate(code):
-                if i % 2 == 0:  # Çift indeks: sinyal açık
+                if i % 2 == 0:  # Even index: signal on
                     self.gpio.output(self.ir_pin, True)
-                else:  # Tek indeks: sinyal kapalı
+                else:  # Odd index: signal off
                     self.gpio.output(self.ir_pin, False)
 
-                # Mikrosaniye cinsinden bekle
+                # Wait in microseconds
                 time.sleep(pulse / 1000000.0)
 
-            # Son durumda pini kapatalım
+            # Finally, let's turn off the pin
             self.gpio.output(self.ir_pin, False)
             return True
         except Exception as e:
-            self.logger.error(f"IR sinyal gönderme hatası: {e}")
+            self.logger.error(f"IR signal send error: {e}")
             return False
 
     def control_device(self, device_type, command, status=None):
         """
-        Cihazı kontrol eder
+        Controls the device
 
         Args:
-            device_type: Cihaz tipi (tv, ac, vb.)
-            command: Komut (power, volumeUp, vb.)
-            status: İstenen durum (True/False) - sadece power komutunda kullanılır
+            device_type: Device type (tv, ac, etc.)
+            command: Command (power, volumeUp, etc.)
+            status: Desired status (True/False) - only used with power command
 
         Returns:
-            bool: İşlem başarılı oldu mu
+            bool: Was the operation successful
         """
         if device_type not in self.device_codes:
-            self.logger.error(f"Bilinmeyen cihaz tipi: {device_type}")
+            self.logger.error(f"Unknown device type: {device_type}")
             return False
 
         if command not in self.device_codes[device_type]:
-            self.logger.error(f"Bilinmeyen komut: {command}")
+            self.logger.error(f"Unknown command: {command}")
             return False
 
-        # Cihaz durumunu güncelle
+        # Update device status
         device_key = f"{device_type}"
         old_status = self.device_status.get(device_key, False)
 
         if command == "power":
-            # Durum belirtilmediyse, mevcut durumu tersine çevir
+            # If status is not specified, toggle the current status
             if status is None:
                 self.device_status[device_key] = not old_status
             else:
                 self.device_status[device_key] = status
 
-        # IR sinyali gönder
+        # Send IR signal
         code = self.device_codes[device_type][command]
         result = self.send_ir_signal(code)
 
         if result:
-            self.logger.info(f"{device_type} için {command} komutu gönderildi")
+            self.logger.info(f"Command {command} sent to {device_type}")
 
             if command == "power":
                 new_status = self.device_status.get(device_key, False)
 
-                # Power komutunda LED'i de güncelle
+                # Update LED on power command too
                 self.set_led_status(device_type, new_status)
 
                 self.logger.info(
-                    f"{device_type} durumu: {'açık' if new_status else 'kapalı'}")
+                    f"{device_type} status: {'on' if new_status else 'off'}")
 
-                # Durum değiştiyse olay yayınla
+                # Publish event if status changed
                 if old_status != new_status and self.iot_client:
                     event_type = "MODE_CHANGE"
-                    description = f"{device_type.upper()} {'açıldı' if new_status else 'kapatıldı'}"
+                    description = f"{device_type.upper()} {'turned on' if new_status else 'turned off'}"
                     self.iot_client.publish_room_event(event_type, description)
 
             elif self.iot_client:
-                # Diğer komutlar için de olay yayınla (ses ayarı, sıcaklık ayarı vb.)
+                # Publish event for other commands too (volume, temp etc.)
                 event_type = "MODE_CHANGE"
-                description = f"{device_type.upper()} için {command} komutu uygulandı"
+                description = f"Command {command} applied to {device_type.upper()}"
                 self.iot_client.publish_room_event(event_type, description)
 
-            # RoomControl güncellemelerini mevcut kodla bırakın
+            # Keep RoomControl updates with existing code
             try:
-                # RoomControl model güncellemesi için mesaj hazırla
+                # Prepare message for RoomControl model update
                 from cloud.iot_client import IoTClient
                 import time
                 import json
 
-                self.logger.debug(f"RoomControl için durum güncellemesi hazırlanıyor: {device_type} - {status}")
+                self.logger.debug(f"Preparing status update for RoomControl: {device_type} - {status}")
             except Exception as e:
-                self.logger.error(f"RoomControl güncelleme hatası: {e}")
+                self.logger.error(f"RoomControl update error: {e}")
 
         return result
 
     def _update_amplify_room_control(self, device_name, status):
         """
-        AWS Amplify'daki RoomControl modelini günceller
+        Updates RoomControl model in AWS Amplify
 
         Args:
-            device_name: Cihaz adı
-            status: Açık/kapalı durumu
+            device_name: Device name
+            status: On/off status
         """
         try:
-            # RoomControl model güncellemesi için mesaj hazırla
+            # Prepare message for RoomControl model update
             from cloud.iot_client import IoTClient
             import time
             import json
 
-            # Global IoTClient'a direkt erişimimiz olmadığından
-            # main.py içindeki güncellemelere güveniyoruz
+            # Since we don't have direct access to global IoTClient
+            # we rely on updates in main.py
 
-            self.logger.debug(f"RoomControl için durum güncellemesi hazırlanıyor: {device_name} - {status}")
+            self.logger.debug(f"Preparing status update for RoomControl: {device_name} - {status}")
         except Exception as e:
-            self.logger.error(f"RoomControl güncelleme hatası: {e}")
+            self.logger.error(f"RoomControl update error: {e}")
 
     def get_device_status(self, device_type=None):
         """
-        Cihaz durumunu döndürür
+        Returns device status
 
         Args:
-            device_type: Belirtilirse sadece o cihazın durumu, None ise tüm durumlar
+            device_type: If provided only that device's status, if None all statuses
 
         Returns:
-            dict: Cihaz durumları
+            dict: Device statuses
         """
         if device_type:
             return {device_type: self.device_status.get(device_type, False)}

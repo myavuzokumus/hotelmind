@@ -5,10 +5,10 @@ import time
 import tkinter as tk
 from pathlib import Path
 
-# Proje kök dizinini Python yoluna ekle
+# Add project root to Python path
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Kendi modüllerimizi içe aktar
+# Import our modules
 from utils.config import Config
 from utils.logger import setup_logger, setup_aws_iot_logger
 from sensors.sensor_manager import SensorManager
@@ -17,202 +17,202 @@ from cloud.iot_client import IoTClient
 from cloud.preference import PreferenceManager
 from utils.qrcode_generator import QRCodeGenerator
 
-# Global değişkenler
+# Global variables
 running = True
 logger = None
 qr_generator = None
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Akıllı Oda Kontrol Sistemi")
+    parser = argparse.ArgumentParser(description="Smart Room Control System")
     parser.add_argument("-m", "--mock", action="store_true", dest="mock_sensors",
-                        help="Sensörleri simüle et (Raspberry Pi donanımı olmadığında)")
+                        help="Simulate sensors (when Raspberry Pi hardware is not available)")
     parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
-                        help="Detaylı log çıktısı")
+                        help="Verbose log output")
     parser.add_argument("-q", "--qrcode", action="store_true", dest="show_qrcode",
-                        help="Başlangıçta QR kod üretecini göster")
+                        help="Show QR code generator on startup")
     return parser.parse_args()
 
 
 def command_handler(topic, message):
-    """AWS'den gelen komutları işler"""
+    """Processes commands from AWS"""
     global preference_manager, actuator_manager, qr_generator, iot_client
 
     try:
-        logger.info(f"Komut alındı: {message}")
+        logger.info(f"Command received: {message}")
 
-        # RoomControl model değişikliklerini kontrol et
+        # Check for RoomControl model changes
         if topic.endswith('/control/response') and "roomControl" in message:
             control_type = message["roomControl"].get("controlType")
             control_name = message["roomControl"].get("controlName")
             status = message["roomControl"].get("status", False)
 
-            logger.info(f"Oda kontrolü alındı: {control_type} - {control_name} - {status}")
+            logger.info(f"Room control received: {control_type} - {control_name} - {status}")
 
-            # Cihaz kontrolü ise IR kontrolcüsünü kullan
+            # If it's device control, use IR controller
             if control_type == "device" and control_name in ["tv", "ac"]:
                 actuator_manager.ir_controller.control_device(control_name, "power", status)
 
-                # Cihaz durumlarını AWS IoT'ye raporla
+                # Report device statuses to AWS IoT
                 if iot_client:
                     device_statuses = actuator_manager.ir_controller.get_device_status()
                     iot_client.publish_device_status(device_statuses)
 
-            # Işık kontrolü ise (gelecekte eklenebilir)
+            # If it's light control (can be added in the future)
             elif control_type == "light":
-                # Sadece LED'leri kontrol et, IR cihaz kontrolünü kullanma
+                # Only control LEDs, do not use IR device control
                 led_name = control_name.upper() if control_name == "main" else control_name
                 actuator_manager.ir_controller.set_led_status(led_name, status)
-                logger.info(f"Işık kontrolü: {control_name} - {'açık' if status else 'kapalı'}")
+                logger.info(f"Light control: {control_name} - {'on' if status else 'off'}")
 
-                # Işık durumlarını AWS IoT'ye raporla
+                # Report light statuses to AWS IoT
                 if iot_client:
                     device_statuses = {}
                     device_statuses[control_name] = status
                     iot_client.publish_device_status(device_statuses)
 
-        # Eylem komutları
+        # Action commands
         if "actions" in message:
             actuator_manager.process_actions(message["actions"])
 
-        # Kullanıcı tercihleri yanıtı
+        # User preferences response
         if "userPreference" in message:
             preference_manager.update_preferences(message["userPreference"])
 
-        # QR kod güvenlik anahtarı yanıtı
+        # QR code secret key response
         if topic.endswith('/secret/response') and "secretKey" in message:
             if qr_generator:
                 qr_generator.handle_secret_response(message)
 
-        # Sensör geçmişi yanıtı
+        # Sensor history response
         if topic.endswith('/sensors/history/response') and "payload" in message:
-            logger.info("Sensör geçmişi alındı")
+            logger.info("Sensor history received")
             if isinstance(message["payload"], list) and iot_client:
                 iot_client.sensor_history = message["payload"]
 
-        # Olay geçmişi yanıtı
+        # Event history response
         if topic.endswith('/events/history/response') and "payload" in message:
-            logger.info("Olay geçmişi alındı")
+            logger.info("Event history received")
             if isinstance(message["payload"], list) and iot_client:
                 iot_client.event_history = message["payload"]
 
     except Exception as e:
-        logger.error(f"Komut işleme hatası: {e}")
+        logger.error(f"Command processing error: {e}")
 
 
 def check_dangerous_conditions(sensor_data, iot_client):
-    """Tehlikeli durumları kontrol eder ve gerekirse olay kaydeder"""
+    """Checks for dangerous conditions and logs events if necessary"""
 
-    # Gaz seviyesi kontrolü
+    # Gas level check
     if sensor_data["gasLevel"] > 5:
-        logger.warning("Yüksek gaz seviyesi tespit edildi!")
+        logger.warning("High gas level detected!")
         actuator_manager.alert.play_warning_sound()
 
-    # Hareket/mevcudiyet kontrolü
+    # Motion/presence check
     if sensor_data["distance"] < 50 and not sensor_data["occupied"]:
-        iot_client.publish_room_event("SECURITY_WARNING", "Şüpheli hareket tespit edildi")
+        iot_client.publish_room_event("SECURITY_WARNING", "Suspicious movement detected")
 
 
 def apply_preferences(sensor_data, preferences, actuator_manager):
-    """Kullanıcı tercihlerini uygular"""
+    """Applies user preferences"""
 
-    # Climate controller'a preference'ları aktar
+    # Transfer preferences to climate controller
     actuator_manager.climate.update_preferences(preferences.user_preferences)
 
-    # Sıcaklık kontrolü
+    # Temperature control
     if preferences.user_preferences.get("autoClimate", True):
         current_temp = sensor_data["temperature"]
         actuator_manager.climate.adjust_for_temperature(current_temp)
 
-    # Nem kontrolü - artık gerçek fonksiyon çağrısı
+    # Humidity control - now an actual function call
     if preferences.user_preferences.get("autoClimate", True):
         current_humidity = sensor_data["humidity"]
         actuator_manager.climate.adjust_for_humidity(current_humidity)
 
 def sensor_callback(data):
-    """Sensör verilerini işler"""
+    """Processes sensor data"""
     global iot_client, preference_manager, actuator_manager
 
-    # Sensör verilerini yazdır
+    # Print sensor data
     print("\n" + "=" * 50)
-    print(f"Sıcaklık: {data['temperature']:.1f}°C, Nem: {data['humidity']:.1f}%")
-    print(f"Basınç: {data['pressure']:.2f} hPa")  # Basınç verisi eklendi
-    print(f"Mevcudiyet: {'Dolu' if data['occupied'] else 'Boş'}, Mesafe: {data['distance']:.1f} cm")
-    print(f"Gaz Seviyesi: {data['gasLevel']}/10, Kart: {'Takılı' if data['cardInserted'] else 'Takılı Değil'}")
+    print(f"Temperature: {data['temperature']:.1f}°C, Humidity: {data['humidity']:.1f}%")
+    print(f"Pressure: {data['pressure']:.2f} hPa")  # Pressure data added
+    print(f"Occupancy: {'Occupied' if data['occupied'] else 'Empty'}, Distance: {data['distance']:.1f} cm")
+    print(f"Gas Level: {data['gasLevel']}/10, Card: {'Inserted' if data['cardInserted'] else 'Not Inserted'}")
     print("=" * 50)
 
-    # Verileri buluta gönder
+    # Send data to cloud
     iot_client.publish_sensor_data(data)
 
-    # Tehlikeli durumları kontrol et
+    # Check dangerous conditions
     check_dangerous_conditions(data, iot_client)
 
-    # Kullanıcı tercihlerini güncelle ve uygula
+    # Update and apply user preferences
     #preferences = preference_manager.fetch_preferences()
     apply_preferences(data, preference_manager, actuator_manager)
 
 
 def cleanup_resources():
-    """Kaynakları temizler"""
+    """Cleans up resources"""
     global running, logger, iot_client, qr_generator
 
-    logger.info("Kaynaklar temizleniyor...")
+    logger.info("Cleaning up resources...")
     running = False
 
-    # AWS IoT bağlantısını kapat
+    # Close AWS IoT connection
     if iot_client:
         iot_client.disconnect()
 
-    # QR kod üreteci penceresi varsa kapat
+    # Close QR code generator window if exists
     if qr_generator and qr_generator.root:
         qr_generator.root.destroy()
 
-    # GPIO kaynakları temizleme (RPi.GPIO bir Python modülü)
+    # GPIO resources cleanup (RPi.GPIO is a Python module)
     try:
         import RPi.GPIO as GPIO
         GPIO.cleanup()
-        logger.info("GPIO kaynakları temizlendi")
+        logger.info("GPIO resources cleaned up")
     except:
         pass
 
-    logger.info("Tüm kaynaklar temizlendi")
+    logger.info("All resources cleaned up")
 
 
 def show_qr_code():
-    """QR kod üretecini gösterir"""
+    """Shows the QR code generator"""
     global qr_generator
     if qr_generator:
         qr_generator.show()
 
 
 def create_control_ui():
-    """Ana kontrol arayüzünü oluşturur"""
+    """Creates the main control interface"""
     global qr_generator
 
-    # Basit kontrol arayüzü
+    # Simple control interface
     root = tk.Tk()
-    root.title("Akıllı Oda Kontrol")
+    root.title("Smart Room Control")
     root.geometry("300x200")
     root.configure(bg="#f8f9fa")
 
-    # Ana çerçeve
+    # Main frame
     frame = tk.Frame(root, bg="#f8f9fa", padx=20, pady=20)
     frame.pack(fill=tk.BOTH, expand=True)
 
-    # Başlık
+    # Title
     title = tk.Label(
         frame,
-        text="Akıllı Oda Kontrol",
+        text="Smart Room Control",
         font=("Segoe UI", 16, "bold"),
         fg="#4361ee",
         bg="#f8f9fa"
     )
     title.pack(pady=(0, 20))
 
-    # QR Kod butonu
+    # QR Code button
     qr_button = tk.Button(
         frame,
-        text="QR Kod Oluştur",
+        text="Generate QR Code",
         font=("Segoe UI", 12),
         bg="#4361ee",
         fg="white",
@@ -225,10 +225,10 @@ def create_control_ui():
     )
     qr_button.pack(fill=tk.X, pady=10)
 
-    # Çıkış butonu
+    # Exit button
     exit_button = tk.Button(
         frame,
-        text="Programı Sonlandır",
+        text="Exit Program",
         font=("Segoe UI", 12),
         bg="#e63946",
         fg="white",
@@ -248,81 +248,81 @@ def main():
     global running, logger, iot_client, preference_manager, actuator_manager, qr_generator
 
     try:
-        # Komut satırı argümanlarını al
+        # Get command line arguments
         args = parse_args()
 
-        # Logger'ı yapılandır
+        # Configure logger
         log_level = logging.DEBUG if args.verbose else logging.INFO
         logger = setup_logger(level=log_level)
         #aws_logger = setup_aws_iot_logger()
 
-        # Konfigürasyon yükle
+        # Load configuration
         config = Config()
 
-        # Simülasyon modunu ayarla
+        # Set simulation mode
         if args.mock_sensors:
             config.has_hardware = False
 
-        # Sertifika dosyalarını kontrol et
+        # Check certificate files
         if not config.check_certificates():
-            print(f"HATA: Sertifika dosyaları bulunamadı. Lütfen certs/ klasörünü kontrol edin.")
+            print(f"ERROR: Certificate files not found. Please check certs/ directory.")
             return 1
 
-        # IoT istemcisi oluştur ve bağlan
+        # Create IoT client and connect
         iot_client = IoTClient(config)
         if not iot_client.connect():
-            logger.error("AWS IoT bağlantısı kurulamadı. Çıkılıyor.")
+            logger.error("Failed to establish AWS IoT connection. Exiting.")
             return 1
 
-        # Komut işleyiciyi ayarla ve gerekli konulara abone ol
+        # Set command handler and subscribe to required topics
         iot_client.set_command_handler(command_handler)
         iot_client.subscribe_to_commands()
 
-        # Kullanıcı tercihleri yöneticisi
+        # User preferences manager
         preference_manager = PreferenceManager(iot_client)
 
-        # Sensör yöneticisi
+        # Sensor manager
         sensor_manager = SensorManager(config)
         if not sensor_manager.setup_sensors():
-            logger.error("Sensör yapılandırması başarısız oldu. Çıkılıyor.")
+            logger.error("Sensor configuration failed. Exiting.")
             cleanup_resources()
             return 1
 
-        # Çıktı cihazları yöneticisi
+        # Output devices manager
         actuator_manager = ActuatorManager(config)
         if not actuator_manager.setup():
-            logger.error("Çıktı cihazları yapılandırması başarısız oldu. Çıkılıyor.")
+            logger.error("Actuator configuration failed. Exiting.")
             cleanup_resources()
             return 1
 
         actuator_manager.set_iot_client(iot_client, preference_manager)
 
-        #Cooldown süresi
+        # Cooldown time
         time.sleep(5)
 
-        # QR kod üreteci
+        # QR code generator
         qr_generator = QRCodeGenerator(config, iot_client)
 
-        # Sensör izlemeyi başlat (10 saniyelik aralıklarla)
+        # Start sensor monitoring (at 10-second intervals)
         #monitor_thread = sensor_manager.start_monitoring(sensor_callback, interval=10)
 
-        # İlk kullanıcı tercihlerini al
+        # Fetch initial user preferences
         #preference_manager.fetch_preferences(force=True)
 
-        # Başlangıçta QR kod göster seçeneği aktifse
+        # If show QR code initially option is active
         if args.show_qrcode:
             qr_generator.show()
 
-        # Kontrol arayüzünü oluştur ve başlat
+        # Create and start control interface
         root = create_control_ui()
         root.mainloop()
 
         return 0
 
     except KeyboardInterrupt:
-        logger.info("Kullanıcı tarafından sonlandırıldı.")
+        logger.info("Terminated by user.")
     except Exception as e:
-        logger.error(f"Beklenmeyen hata: {e}", exc_info=True)
+        logger.error(f"Unexpected error: {e}", exc_info=True)
         return 1
     finally:
         cleanup_resources()

@@ -8,7 +8,7 @@ import 'debug_log_provider.dart';
 
 class SensorService {
 
-  // Sensör değerleri
+  // Sensor values
   double _temperature = 22.0;
   double _humidity = 50.0;
   int _gasLevel = 3;
@@ -31,7 +31,7 @@ class SensorService {
   Stream<double> get distanceStream => _distanceController.stream;
   Stream<bool> get cardStatusStream => _cardStatusController.stream;
 
-  // Subscription değişkeni
+  // Subscription variable
   StreamSubscription<GraphQLResponse<SensorData>>? _sensorSubscription;
 
   // Getters
@@ -59,12 +59,12 @@ class SensorService {
   }
 
   void _connectToSensors() {
-    log("Sensörlere bağlanılıyor...");
+    log("Connecting to sensors...");
 
-    // İlk veri çekimi
+    // Initial data fetch
     _fetchLatestSensorData();
 
-    // Periyodik olarak verileri yenile (her 5 saniyede bir)
+    // Periodically refresh data
     Timer.periodic(Duration(seconds: 10), (_) {
       _fetchLatestSensorData();
     });
@@ -83,79 +83,79 @@ class SensorService {
       if (response.data != null && response.data!.payload!.isNotEmpty) {
         final latestSensor = response.data!.payload!.last;
 
-        // Verileri güncelle ve stream'lere ilet
+        // Update data and pass to streams
         _temperature = latestSensor.temperature ?? 22.0;
         _humidity = latestSensor.humidity ?? 50.0;
         _gasLevel = latestSensor.gasLevel ?? 3;
         _distance = latestSensor.distance ?? 300.0;
         _isCardInserted = latestSensor.cardInserted ?? false;
 
-        // Stream'lere bildirim gönder
+        // Send notification to streams
         _temperatureController.add(_temperature);
         _humidityController.add(_humidity);
         _gasLevelController.add(_gasLevel);
         _distanceController.add(_distance);
         _cardStatusController.add(_isCardInserted);
 
-        log("Sensör verileri güncellendi: T:$_temperature, H:$_humidity");
+        log("Sensor data updated: T:$_temperature, H:$_humidity");
       }
     } catch (e) {
-      log("Sensör verisi çekilirken hata: $e");
+      log("Error fetching sensor data: $e");
     }
   }
 
-// // Sensörlere bağlan ve gerçek zamanlı güncellemeleri dinle
+// // Connect to sensors and listen to real-time updates
 //   void _connectToSensors() {
-//     log("Sensörlere bağlanılıyor...");
+//     log("Connecting to sensors...");
 //
 //     try {
-//       // SensorData modeli için abonelik (subscription) oluştur
+//       // Create subscription for SensorData model
 //       final subscriptionRequest = ModelSubscriptions.onUpdate(
 //         SensorData.classType,
 //         authorizationMode: APIAuthorizationType.apiKey,
-//         where: SensorData.ROOMID.eq("room_001"), // Sensör ID'sini burada belirtin
+//         where: SensorData.ROOMID.eq("room_001"), // Specify Sensor ID here
 //       );
 //
-//       // Stream oluştur
+//       // Create stream
 //       final subscription = Amplify.API.subscribe(
 //         subscriptionRequest,
-//         onEstablished: () => log("Sensör verilerine abonelik başarıyla kuruldu"),
+//         onEstablished: () => log("Subscription to sensor data established successfully"),
 //       );
 //
-//       // Stream'e abone ol
+//       // Subscribe to stream
 //       _sensorSubscription = subscription.listen(
 //             (event) {
 //           final sensorData = event.data;
-//           log("Sensör verisi güncellendi: $sensorData");
+//           log("Sensor data updated: $sensorData");
 //           if (sensorData != null && sensorData.payload!.isNotEmpty) {
-//             // Dizideki son sensör verisini al
-//             log("Sensör verisi alındı: ${sensorData.payload}");
+//             // Get the last sensor data in the array
+//             log("Sensor data received: ${sensorData.payload}");
 //
 //             final latestSensor = sensorData.payload!.last;
 //
-//             // Verileri güncelle ve stream'lere ilet
+//             // Update data and pass to streams
 //             _temperature = latestSensor.temperature ?? 22.0;
 //             _humidity = latestSensor.humidity ?? 50.0;
 //             _gasLevel = latestSensor.gasLevel ?? 3;
 //             _distance = latestSensor.distance ?? 300.0;
 //             _isCardInserted = latestSensor.cardInserted ?? false;
 //
-//             // Stream'lere bildirim gönder
+//             // Send notification to streams
 //             _temperatureController.add(_temperature);
 //             _humidityController.add(_humidity);
 //             _gasLevelController.add(_gasLevel);
 //             _distanceController.add(_distance);
 //             _cardStatusController.add(_isCardInserted);
 //
-//             log("Yeni sensör verileri alındı: T:$_temperature, H:$_humidity, G:$_gasLevel");
+//             log("New sensor data received: T:$_temperature, H:$_humidity, G:$_gasLevel");
 //           }
 //         },
 //         onError: (error) {
-//           log("Sensör verisi aboneliğinde hata: $error");
+//           log("Error in sensor data subscription: $error");
 //         },
 //       );
 //     } catch (e) {
-//       log("Sensör bağlantısı kurulamadı: $e");
+//       log("Could not connect to sensors: $e");
 //     }
 //   }
 

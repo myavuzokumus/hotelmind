@@ -5,7 +5,7 @@ import os
 import time
 from boto3.dynamodb.conditions import Key
 
-# DynamoDB tablosu adı
+# DynamoDB table name
 table_name = os.environ.get('DATA_TABLE', 'RoomControl-23zg6kw7jvc7vd6hacyznny2w4-NONE')
 
 dynamodb = boto3.resource('dynamodb')
@@ -14,19 +14,19 @@ table = dynamodb.Table(table_name)
 iot_client = boto3.client('iot-data')
 
 def handler(event, context):
-    print(f"Gelen istek: {json.dumps(event)}")  # Gelen isteği logla
+    print(f"Incoming request: {json.dumps(event)}")  # Log incoming request
 
     try:
-        # Farklı istek formatlarından parametreleri çıkar
+        # Extract parameters from different request formats
         request_id = event.get('requestId')
 
-        # 1. Doğrudan event içindeki veya 2. Amplify formatındaki arguments içindeki parametre
+        # 1. Directly inside event or 2. parameter inside arguments in Amplify format
         room_id = event.get('roomId')
-        control_type = event.get('controlType')  # 'light' veya 'device'
-        control_name = event.get('controlName')  # 'main', 'desk', 'tv', 'ac' vb.
+        control_type = event.get('controlType')  # 'light' or 'device'
+        control_name = event.get('controlName')  # 'main', 'desk', 'tv', 'ac' etc.
         status = event.get('status')
 
-        # Amplify formatı kontrolü (arguments içinde parametreler)
+        # Amplify format check (parameters inside arguments)
         if room_id is None and 'arguments' in event:
             args = event.get('arguments', {})
             room_id = args.get('roomId')
@@ -34,22 +34,22 @@ def handler(event, context):
             control_name = args.get('controlName')
             status = args.get('status')
 
-        # roomId'nin string olduğundan emin olalım
+        # Ensure roomId is string
         if room_id is not None and not isinstance(room_id, str):
             room_id = str(room_id)
-            print(f"roomId string'e dönüştürüldü: {room_id}")
+            print(f"roomId converted to string: {room_id}")
 
-        # Zorunlu parametrelerin kontrolü
+        # Check required parameters
         if not room_id:
-            print("Geçersiz roomId: Boş veya None değeri")
-            return {"statusCode": 400, "error": "Oda ID gereklidir"}
+            print("Invalid roomId: Empty or None value")
+            return {"statusCode": 400, "error": "Room ID is required"}
 
-        # Zaman damgası oluştur
+        # Create timestamp
         current_time = int(time.time())
 
-        # Durum güncellemesi yapılacaksa
+        # If status update is to be made
         if control_name and status is not None:
-            # Kontrolü güncelle veya oluştur
+            # Update or create control
             update_response = table.update_item(
                 Key={
                     'roomId': room_id,
@@ -76,7 +76,7 @@ def handler(event, context):
                 "lastUpdated": updated_item.get('lastUpdated', current_time)
             }
 
-            # IoT MQTT mesajı hazırla ve gönder
+            # Prepare and send IoT MQTT message
             payload = json.dumps({
                 "requestId": request_id,
                 "roomControl": response_data
@@ -87,7 +87,7 @@ def handler(event, context):
                 payload=payload
             )
 
-        # Belirli bir kontrolü sorgulamak için
+        # To query a specific control
         elif control_name:
             response = table.get_item(
                 Key={
@@ -103,7 +103,7 @@ def handler(event, context):
                 "lastUpdated": item.get('lastUpdated', current_time)
             }
 
-            # IoT MQTT mesajı hazırla ve gönder
+            # Prepare and send IoT MQTT message
             payload = json.dumps({
                 "requestId": request_id,
                 "roomControl": response_data
@@ -114,7 +114,7 @@ def handler(event, context):
                 payload=payload
             )
 
-        # Tüm kontrolleri sorgulamak için
+        # To query all controls
         else:
             response = table.query(
                 KeyConditionExpression=Key('roomId').eq(room_id)
@@ -131,7 +131,7 @@ def handler(event, context):
                 }
                 all_controls.append(device_data)
 
-                # Her cihaz için ayrı IoT mesajı gönder
+                # Send a separate IoT message for each device
                 individual_payload = json.dumps({
                     "requestId": request_id,
                     "roomControl": device_data
@@ -142,17 +142,17 @@ def handler(event, context):
                     payload=individual_payload
                 )
 
-        # Amplify/HTTP istekleri için JSON yanıtı döndür
+        # Return JSON response for Amplify/HTTP requests
         return {
             "statusCode": 200,
-            "body": "Oda kontrolü başarıyla işlendi"
+            "body": "Room control processed successfully"
         }
 
     except Exception as e:
-        print(f"Hata: {str(e)}")
+        print(f"Error: {str(e)}")
         return {"statusCode": 500, "error": str(e)}
 
-# Decimal tiplerini JSON'a çevirebilen özel encoder
+# Custom encoder that can convert Decimal types to JSON
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):

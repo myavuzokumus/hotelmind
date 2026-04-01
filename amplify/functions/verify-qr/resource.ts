@@ -48,7 +48,7 @@ export const verifyQrFunctionHandler = defineFunction(
       }),
     });
 
-    // DynamoDB izinleri ekleme - doğru yaklaşım
+    // Adding DynamoDB permissions - correct approach
     lambdaFunction.addToRolePolicy(new PolicyStatement({
       actions: [
         'dynamodb:Query',
@@ -58,8 +58,8 @@ export const verifyQrFunctionHandler = defineFunction(
         'dynamodb:DeleteItem',
       ],
       resources: [
-        // NOT: GitHub'da açık kaynak (public) olabilmesi ve başkalarının kendi AWS hesaplarına 
-        // deploy edebilmesi için Bölge (Region) ve AWS Hesap ID'si *:* olarak jenerik bırakılmıştır.
+        // NOTE: For it to be open source on GitHub and for others to be able to deploy to their own AWS accounts, 
+        // Region and AWS Account ID are left generic as *:*
         "arn:aws:dynamodb:*:*:table/QrRateLimit*",
         "arn:aws:dynamodb:*:*:table/QrSession*"
       ]

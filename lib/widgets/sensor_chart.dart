@@ -30,7 +30,7 @@ class SensorChart extends StatelessWidget {
             Icon(Icons.bar_chart, size: 48, color: Colors.grey.shade300),
             SizedBox(height: 16),
             Text(
-              'Henüz veri yok',
+              'No data yet',
               style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
             ),
           ],
@@ -71,7 +71,7 @@ class SensorChart extends StatelessWidget {
               axisNameWidget: Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
-                  'Zaman (son $label değerleri)',
+                  'Time (last $label values)',
                   style: TextStyle(
                     color: Colors.grey.shade700,
                     fontSize: 12,
@@ -84,7 +84,7 @@ class SensorChart extends StatelessWidget {
                 reservedSize: 30,
                 interval: 5,
                 getTitlesWidget: (value, meta) {
-                  // X ekseni etiketleri
+                  // X-axis labels
                   if (value % 5 == 0 && value < data.length) {
                     return SideTitleWidget(
                       meta: meta,
@@ -186,7 +186,7 @@ class SensorChart extends StatelessWidget {
                   );
                 },
                 checkToShowDot: (spot, barData) {
-                  return spot.x % 5 == 0; // Her 5 noktada bir nokta göster
+                  return spot.x % 5 == 0; // Show a dot every 5 points
                 },
               ),
               belowBarData: BarAreaData(

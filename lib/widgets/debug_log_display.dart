@@ -41,7 +41,7 @@ class DebugLogDisplay extends ConsumerWidget {
                 IconButton(
                   icon: Icon(Icons.delete, color: Colors.white, size: 20),
                   onPressed: () => ref.read(debugLogProvider.notifier).clear(),
-                  tooltip: 'Logları Temizle',
+                  tooltip: 'Clear Logs',
                 ),
               ],
             ),
@@ -50,7 +50,7 @@ class DebugLogDisplay extends ConsumerWidget {
             child: logs.isEmpty
                 ? Center(
               child: Text(
-                'Henüz log kaydı yok',
+                'No logs yet',
                 style: TextStyle(color: Colors.grey),
               ),
             )

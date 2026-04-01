@@ -9,7 +9,7 @@ class ResponseModel<T> {
     required this.success,
   });
 
-  // Başarılı işlem constructor'ı
+  // Success constructor
   factory ResponseModel.success(T data) {
     return ResponseModel(
       data: data,
@@ -17,7 +17,7 @@ class ResponseModel<T> {
     );
   }
 
-  // Hatalı işlem constructor'ı
+  // Error constructor
   factory ResponseModel.error(String errorMessage) {
     return ResponseModel(
       error: errorMessage,

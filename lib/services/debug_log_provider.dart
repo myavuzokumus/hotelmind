@@ -13,7 +13,7 @@ class DebugLogNotifier extends StateNotifier<List<String>> {
 
     final updatedLogs = [...state, logEntry];
 
-    // Log listesi çok uzarsa eski kayıtları temizle
+    // Clear old records if log list gets too long
     if (updatedLogs.length > maxLogEntries) {
       state = updatedLogs.sublist(updatedLogs.length - maxLogEntries);
     } else {
@@ -29,19 +29,19 @@ class DebugLogNotifier extends StateNotifier<List<String>> {
 // Global log instance
 final DebugLogNotifier _globalLogNotifier = DebugLogNotifier();
 
-// Global log fonksiyonu
+// Global log function
 void log(String message) {
   _globalLogNotifier.log(message);
 }
 
-// Global clear fonksiyonu
+// Global clear function
 void clearLogs() {
   _globalLogNotifier.clear();
 }
 
 final debugLogProvider = StateNotifierProvider<DebugLogNotifier, List<String>>(
-      (ref) => _globalLogNotifier, // Aynı instance'ı provider'a da veriyoruz
+      (ref) => _globalLogNotifier, // Provide the same instance to the provider
 );
 
-// Geliştirici modu için provider
+// Provider for developer mode
 final developerModeProvider = StateProvider<bool>((ref) => false);

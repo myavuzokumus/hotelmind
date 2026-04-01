@@ -4,7 +4,7 @@ import json
 import os
 from boto3.dynamodb.conditions import Key
 
-# DynamoDB tablosu - Ortam değişkeninden tablonun adını al
+# DynamoDB table - Get table name from environment variable
 table_name = os.environ.get('PREFERENCE_TABLE', 'UserPreference-23zg6kw7jvc7vd6hacyznny2w4-NONE')
 
 dynamodb = boto3.resource('dynamodb')
@@ -13,45 +13,45 @@ table = dynamodb.Table(table_name)
 iot_client = boto3.client('iot-data')
 
 def handler(event, context):
-    print(f"Gelen istek: {json.dumps(event)}")  # Log isteği
+    print(f"Incoming request: {json.dumps(event)}")  # Log request
 
     request_id = event.get('requestId')
 
-    # İki farklı istek formatını işle:
-    # 1. Doğrudan event içinde roomId olan MQTT istekleri
-    # 2. arguments içinde roomId olan Amplify v2 istekleri
+    # Process two different request formats:
+    # 1. MQTT requests with roomId directly in event
+    # 2. Amplify v2 requests with roomId in arguments
     room_id = event.get('roomId')
     if room_id is None and 'arguments' in event:
-        # Amplify formatındaki istekler için
+        # For Amplify format requests
         room_id = event.get('arguments', {}).get('roomId')
 
-    # roomId'nin string olduğundan emin olalım
+    # Ensure roomId is a string
     if room_id is not None and not isinstance(room_id, str):
         room_id = str(room_id)
-        print(f"roomId string'e dönüştürüldü: {room_id}")
+        print(f"roomId converted to string: {room_id}")
 
     if not room_id:
-        print("Geçersiz roomId: Boş veya None değeri")
-        return {"statusCode": 400, "error": "Geçersiz roomId"}
+        print("Invalid roomId: Empty or None value")
+        return {"statusCode": 400, "error": "Invalid roomId"}
 
     try:
-        print(f"DynamoDB sorgulanıyor: roomId={room_id}")
+        print(f"Querying DynamoDB: roomId={room_id}")
 
-        # Oda ID'sine göre tercih verilerini çek
+        # Fetch preference data by room ID
         response = table.query(
             KeyConditionExpression=Key('roomId').eq(room_id)
         )
 
-        print(f"DynamoDB yanıtı: {json.dumps(response, cls=DecimalEncoder)}")
+        print(f"DynamoDB response: {json.dumps(response, cls=DecimalEncoder)}")
 
-        # Tercih verilerini al veya varsayılan değerleri kullan
+        # Get preference data or use default values
         if response['Items']:
             preference = response['Items'][0]
         else:
-            # Veri yoksa boş sözlük kullan, get() metoduyla varsayılan değerler atanacak
+            # Use empty dictionary if no data, default values will be assigned with get() method
             preference = {}
 
-        # Yanıtı hazırla
+        # Prepare response
         result = {
             "requestId": request_id,
             "userPreference": {
@@ -64,24 +64,24 @@ def handler(event, context):
             }
         }
 
-        # MQTT istekleri için topic'e yanıt gönder
+        # Send response to topic for MQTT requests
         payload = json.dumps(result, cls=DecimalEncoder)
         iot_client.publish(
             topic=f"room/{room_id}/preference/response",
             payload=payload
         )
 
-        # Amplify/HTTP istekleri için JSON yanıtı döndür
+        # Return JSON response for Amplify/HTTP requests
         return {
             "statusCode": 200,
             "body": result
         }
 
     except Exception as e:
-        print(f"Hata: {str(e)}")
+        print(f"Error: {str(e)}")
         return {"statusCode": 500, "error": str(e)}
 
-# Decimal tiplerini JSON'a çevirebilen özel encoder
+# Custom encoder that can convert Decimal types to JSON
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):

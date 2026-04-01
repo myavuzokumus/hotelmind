@@ -14,7 +14,7 @@ import '../models/SensorData.dart';
 import 'debug_log_provider.dart';
 
 class RoomAutomationService {
-  // Oda olayları için stream controller
+  // Stream controller for room events
   final _eventController = StreamController<Map<String, dynamic>>.broadcast();
 
   String roomId = "room_001";
@@ -32,43 +32,43 @@ class RoomAutomationService {
 
   RoomAutomationService._internal();
 
-  // Initialize metodu ekliyoruz
+  // Adding Initialize method
   void initialize({String? roomId}) {
     if (roomId != null) {
       this.roomId = roomId;
     }
-    // İlk açılışta olayları dinlemeye başla
+    // Start listening for events on startup
     _subscribeToEvents();
   }
 
-  // Abonelik
+  // Subscription
   StreamSubscription? _subscription;
 
   void _subscribeToEvents() {
     try {
-      // Varolan subscription'ı iptal et (eğer varsa)
+      // Cancel existing subscription (if any)
       _subscription?.cancel();
 
-      // İlk veriyi hemen çek
+      // Fetch first data immediately
       _fetchLatestEvents();
 
-      // Periyodik olarak verileri çekecek bir Timer oluştur (her 10 saniyede bir)
+      // Create a Timer to fetch data periodically (every 10 seconds)
       _subscription = Stream.periodic(Duration(seconds: 10)).listen((_) {
         _fetchLatestEvents();
       });
 
-      log('Olay verilerini periyodik sorgulama başlatıldı');
+      log('Periodic querying of event data started');
     } catch (e) {
-      log("Olay dinleme hatası: $e");
+      log("Event listening error: $e");
     }
   }
 
   Future<void> _fetchLatestEvents() async {
     try {
-      // Tek bir kayıt getiren sorgu
+      // Query returning a single record
       final request = ModelQueries.get(
         RoomEvent.classType,
-        RoomEventModelIdentifier(roomId: roomId), // Varsayılan oda ID'si
+        RoomEventModelIdentifier(roomId: roomId), // Default room ID
         authorizationMode: APIAuthorizationType.apiKey,
       );
 
@@ -77,12 +77,12 @@ class RoomAutomationService {
       if (response.data != null) {
         final eventData = response.data!;
 
-        // Payload array'deki olayları döngüyle işle
+        // Loop through events in payload array
         if (eventData.payload.isNotEmpty) {
-          // En son olayı al
+          // Get the latest event
           final lastEvent = eventData.payload.last;
 
-          // Eğer bu event daha önce işlenmediyse stream'e gönder
+          // If this event has not been processed before, send it to the stream
           if (_lastProcessedEventTimestamp == null ||
               lastEvent.timestamp != _lastProcessedEventTimestamp) {
 
@@ -93,23 +93,23 @@ class RoomAutomationService {
               'resolved': lastEvent.resolved
             });
 
-            // Son işlenen event'in timestamp'ini güncelle
+            // Update timestamp of the last processed event
             _lastProcessedEventTimestamp = lastEvent.timestamp;
 
-            log("Yeni olay verisi alındı: ${lastEvent.eventType} - ${lastEvent.description}");
+            log("New event data received: ${lastEvent.eventType} - ${lastEvent.description}");
 
-            // Eğer Alarm tipinde bir olay ise ses çal
+            // Play sound if it is an Alarm type event
             if (lastEvent.eventType != null && lastEvent.eventType!.toLowerCase().contains("alert")) {
-              _playAlarmSequence(); // await olmadan çağırarak engellemeyi önle
+              _playAlarmSequence(); // Call without await to prevent blocking
             }
           } else {
-            log("Event zaten işlenmiş, tekrar eklenmedi: ${lastEvent.timestamp}");
+            log("Event already processed, not added again: ${lastEvent.timestamp}");
           }
         }
 
       }
     } catch (e) {
-      log("Olay verisi çekilirken hata: $e");
+      log("Error fetching event data: $e");
     }
   }
 
@@ -118,69 +118,69 @@ class RoomAutomationService {
     const Duration alarmArasiGecikme = Duration(seconds: 1);
 
     for (int i = 0; i < alarmTekrarSayisi; i++) {
-      await Future.delayed(alarmArasiGecikme); // Ses çalmadan önce kısa bir gecikme
+      await Future.delayed(alarmArasiGecikme); // Short delay before playing sound
       _playAlarmSound();
     }
   }
 
-  // Alarm sesi çalmak için metot
+  // Method to play alarm sound
   void _playAlarmSound() {
-    // AudioPlayer kullanarak ses çalma
+    // Playing sound using AudioPlayer
     try {
       final player = AudioPlayer();
       player.play(AssetSource('sounds/alarm.wav')); //
 
-      log("ALARM SESİ ÇALINIYOR!");
+      log("PLAYING ALARM SOUND!");
 
       SystemSound.play(SystemSoundType.alert);
     } catch (e) {
-      log("Ses çalma hatası: $e");
+      log("Sound playback error: $e");
     }
   }
 
   // void _subscribeToEvents() {
   //   try {
-  //     // Model tabanlı abonelik
-  //     final subscription = Amplify.API.subscribe(
-  //       ModelSubscriptions.onUpdate(RoomEvent.classType,
-  //           authorizationMode: APIAuthorizationType.apiKey),
-  //       onEstablished: () => log('Oda olayları aboneliği kuruldu'),
-  //     );
+  //       // Model-based subscription
+  //       final subscription = Amplify.API.subscribe(
+  //         ModelSubscriptions.onUpdate(RoomEvent.classType,
+  //             authorizationMode: APIAuthorizationType.apiKey),
+  //         onEstablished: () => log('Room events subscription established'),
+  //       );
   //
-  //     _subscription = subscription.listen(
-  //           (event) {
-  //         if (event.data != null && event.data is RoomEvent) {
-  //           final roomEvent = event.data as RoomEvent;
+  //       _subscription = subscription.listen(
+  //             (event) {
+  //           if (event.data != null && event.data is RoomEvent) {
+  //             final roomEvent = event.data as RoomEvent;
   //
-  //           // Yeni yapıda olaylar payload dizisinde
-  //           if (roomEvent.payload.isNotEmpty) {
-  //             // En son eklenen olayı al (dizinin son elemanı)
-  //             final lastEvent = roomEvent.payload.last;
+  //             // In the new structure, events are in the payload array
+  //             if (roomEvent.payload.isNotEmpty) {
+  //               // Get the last added event (last element of array)
+  //               final lastEvent = roomEvent.payload.last;
   //
-  //             // Event stream'e gönder
-  //             _eventController.add({
-  //               'eventType': lastEvent.eventType,
-  //               'timestamp': lastEvent.timestamp,
-  //               'description': lastEvent.description,
-  //               'resolved': lastEvent.resolved
-  //             });
+  //               // Send to event stream
+  //               _eventController.add({
+  //                 'eventType': lastEvent.eventType,
+  //                 'timestamp': lastEvent.timestamp,
+  //                 'description': lastEvent.description,
+  //                 'resolved': lastEvent.resolved
+  //               });
+  //             }
   //           }
-  //         }
-  //       },
-  //       onError: (error) {
-  //         log("Olay aboneliği hatası: $error");
-  //       },
-  //     );
-  //   } catch (e) {
-  //     log("Olay aboneliği oluşturma hatası: $e");
+  //         },
+  //         onError: (error) {
+  //           log("Event subscription error: $error");
+  //         },
+  //       );
+  //     } catch (e) {
+  //       log("Error creating event subscription: $e");
   //   }
   // }
 
-  // Sensör geçmişi getir
-// Sensör geçmişi getir
+  // Get sensor history
+// Get sensor history
   Future<List<Map<String, dynamic>>?> getSensorHistory(String roomId) async {
     try {
-      // Artık tek bir kayıt getiriyoruz, liste değil
+      // Now returning a single record, not a list
       final request = ModelQueries.get(
         SensorData.classType,
         SensorDataModelIdentifier(roomId: roomId),
@@ -190,19 +190,19 @@ class RoomAutomationService {
       final response = await Amplify.API.query(request: request).response;
 
       if (response.errors.isNotEmpty) {
-        log("Sensör geçmişi sorgu hatası: ${response.errors}");
+        log("Sensor history query error: ${response.errors}");
         return null;
       }
 
-      // Veri yoksa boş liste döndür
+      // Return empty list if no data
       if (response.data == null) {
         return [];
       }
 
-      // Artık payload içindeki array verisini alıyoruz
+      // Now getting the array data inside payload
       final sensorData = response.data!;
 
-      // payload içindeki verileri dönüştürüp bir liste olarak döndür
+      // Convert data in payload and return as a list
       return sensorData.payload!.map((item) => {
         'timestamp': item.timestamp,
         'temperature': item.temperature,
@@ -215,15 +215,15 @@ class RoomAutomationService {
       }).toList();
 
     } catch (e) {
-      log("Sensör geçmişi getirme hatası: $e");
+      log("Error getting sensor history: $e");
       return null;
     }
   }
 
-  // Olay geçmişi getir
+  // Get event history
   Future<List<Map<String, dynamic>>?> getEventHistory(String roomId) async {
     try {
-      // Tek bir kayıt getiriyoruz
+      // Getting a single record
       final request = ModelQueries.get(
         RoomEvent.classType,
         RoomEventModelIdentifier(roomId: roomId),
@@ -233,7 +233,7 @@ class RoomAutomationService {
       final response = await Amplify.API.query(request: request).response;
 
       if (response.errors.isNotEmpty) {
-        log("Olay geçmişi sorgu hatası: ${response.errors}");
+        log("Event history query error: ${response.errors}");
         return [];
       }
 
@@ -241,10 +241,10 @@ class RoomAutomationService {
         return [];
       }
 
-      // payload içindeki array verisini alıyoruz
+      // Getting array data inside payload
       final eventData = response.data!;
 
-      // Verileri dönüştür
+      // Convert data
       return eventData.payload.map((event) => {
         'eventType': event.eventType,
         'timestamp': event.timestamp,
@@ -253,15 +253,15 @@ class RoomAutomationService {
       }).toList();
 
     } catch (e) {
-      log("Olay geçmişi getirme hatası: $e");
+      log("Error getting event history: $e");
       return [];
     }
   }
 
-  // Kullanıcı tercihlerini kaydet
+  // Save user preferences
   Future<bool> saveUserPreferences(String roomId, Map<String, dynamic> preferences) async {
     try {
-      // Önce mevcut tercihleri sorgulayalım
+      // First, query existing preferences
       final getRequest = ModelQueries.get(
         UserPreference.classType,
         UserPreferenceModelIdentifier(roomId: roomId),
@@ -273,7 +273,7 @@ class RoomAutomationService {
       final GraphQLResponse<UserPreference> response;
 
       if (getResponse.data != null) {
-        // Mevcut tercihleri güncelle
+        // Update existing preferences
         final updatedPreference = getResponse.data!.copyWith(
             preferredTemperature: preferences['preferredTemperature'],
             preferredHumidity: preferences['preferredHumidity'],
@@ -295,7 +295,7 @@ class RoomAutomationService {
         response = await Amplify.API.mutate(request: updateRequest).response;
 
       } else {
-        // Yeni tercih oluştur
+        // Create new preference
         final newPreference = UserPreference(
             roomId: roomId,
             preferredTemperature: preferences['preferredTemperature'],
@@ -322,12 +322,12 @@ class RoomAutomationService {
       return response.errors.isEmpty;
 
     } catch (e) {
-      log("Kullanıcı tercihleri kaydetme hatası: $e");
+      log("Error saving user preferences: $e");
       return false;
     }
   }
 
-// Kullanıcı tercihlerini getir
+// Get user preferences
   Future<Map<String, dynamic>?> getUserPreferences(String roomId) async {
     try {
       final request = ModelQueries.get(
@@ -353,7 +353,7 @@ class RoomAutomationService {
         'roomMode': preference.roomMode,
       };
     } catch (e) {
-      log("Kullanıcı tercihleri getirme hatası: $e");
+      log("Error getting user preferences: $e");
       return {
         'preferredTemperature': 22.0,
         'preferredHumidity': 55.0,
@@ -365,23 +365,23 @@ class RoomAutomationService {
     }
   }
 
-  // Oda kontrollerini (ışık/cihaz) ayarlamak için fonksiyon
+  // Function to set room controls (light/device)
   Future<bool> setRoomControl(String roomId, Map<String, dynamic> controlData) async {
     try {
-      // Kontrol tipi ve adını al
+      // Get control type and name
       final String controlType = controlData['type'] ?? 'light';
       final String controlName = controlData['type'] == 'light'
           ? controlData['lightType'] ?? 'main'
           : controlData['deviceType'] ?? 'tv';
       final bool status = controlData['status'] ?? false;
 
-      // Model identifier oluştur
+      // Create model identifier
       final identifier = RoomControlModelIdentifier(
         roomId: roomId,
         controlName: controlName,
       );
 
-      // Önce mevcut kontrolü sorgula
+      // Query existing control first
       final getRequest = ModelQueries.get(
         RoomControl.classType,
         identifier,
@@ -393,7 +393,7 @@ class RoomAutomationService {
       RoomControl? roomControl;
 
       if (getResponse.data != null) {
-        // Mevcut kaydı güncelle
+        // Update existing record
         roomControl = getResponse.data!.copyWith(
           status: status,
           lastUpdated: DateTime.now().second,
@@ -407,11 +407,11 @@ class RoomAutomationService {
         final updateResponse = await Amplify.API.mutate(request: updateRequest).response;
 
         if (updateResponse.errors.isNotEmpty) {
-          log("Kontrol güncellenirken hata: ${updateResponse.errors}");
+          log("Error updating control: ${updateResponse.errors}");
           return false;
         }
       } else {
-        // Yeni kontrol kaydı oluştur
+        // Create new control record
         roomControl = RoomControl(
           roomId: roomId,
           controlType: controlType == 'light' ? RoomControlControlType.light : RoomControlControlType.device,
@@ -428,33 +428,33 @@ class RoomAutomationService {
         final createResponse = await Amplify.API.mutate(request: createRequest).response;
 
         if (createResponse.errors.isNotEmpty) {
-          log("Kontrol kaydı oluşturulurken hata: ${createResponse.errors}");
+          log("Error creating control record: ${createResponse.errors}");
           return false;
         }
       }
 
-      // IoT konusuna kontrol güncellemesini yayınla
+      // Publish control update to IoT topic
       await _callRequestRoomControl(roomId, controlType, controlName, status);
 
       return true;
     } catch (e) {
-      log("Oda kontrol işlemi hatası: $e");
+      log("Room control operation error: $e");
       return false;
     }
   }
 
-// IoT konusuna kontrol güncellemesi yayınla
+// Publish control update to IoT topic
   Future<void> _callFetchUserPreference(
       String roomId) async {
     try {
-      // GraphQL dökümü tanımla
+      // Define GraphQL document
       const document = '''
       query FetchUserPreference(\$roomId: String!) {
         FetchUserPreference(roomId: \$roomId)
           }
         ''';
 
-      // GraphQL isteği oluştur
+      // Create GraphQL request
       final request = GraphQLRequest<String>(
         document: document,
         variables: {'roomId': roomId},
@@ -462,20 +462,20 @@ class RoomAutomationService {
         authorizationMode: APIAuthorizationType.apiKey,
       );
 
-      // API çağrısını yap
+      // Make API call
       final response = await Amplify.API.query(request: request).response;
 
       if (response.errors.isNotEmpty) {
-        log("MQTT yayımlama hatası: ${response.errors}");
+        log("MQTT publish error: ${response.errors}");
       } else {
-        log("IoT mesajı başarıyla yayınlandı - Kullanıcı tercihleri");
+        log("IoT message published successfully - User preferences");
       }
     } catch (e) {
-      log("IoT yayınlama hatası: $e");
+      log("IoT publish error: $e");
     }
   }
 
-// RequestRoomControl Lambda fonksiyonunu çağır
+// Call RequestRoomControl Lambda function
   Future<void> _callRequestRoomControl(String roomId, String controlType, String controlName, bool status) async {
     try {
       const document = '''
@@ -499,19 +499,19 @@ class RoomAutomationService {
       final response = await Amplify.API.query(request: request).response;
 
       if (response.errors.isNotEmpty) {
-        log("RequestRoomControl çağrı hatası: ${response.errors}");
+        log("RequestRoomControl call error: ${response.errors}");
       } else {
-        log("RequestRoomControl Lambda fonksiyonu başarıyla çağrıldı: $controlType/$controlName = $status");
+        log("RequestRoomControl Lambda function called successfully: $controlType/$controlName = $status");
       }
     } catch (e) {
-      log("RequestRoomControl çağrı hatası: $e");
+      log("RequestRoomControl call error: $e");
     }
   }
 
-  // Kaynak temizleme
+  // Resource cleanup
   void dispose() {
     _subscription?.cancel();
     _eventController.close();
-    _lastProcessedEventTimestamp = null; // Timestamp'i de temizle
+    _lastProcessedEventTimestamp = null; // Also clear timestamp
   }
 }

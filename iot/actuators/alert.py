@@ -3,14 +3,14 @@ import time
 
 
 class AlertController:
-    """Uyarı sistemi kontrolü"""
+    """Alert system control"""
 
     def __init__(self, config):
         """
-        Uyarı kontrolörünü başlatır
+        Initializes the alert controller
 
         Args:
-            config: Sistem konfigürasyonu
+            config: System configuration
         """
         self.logger = logging.getLogger("SmartRoom.AlertController")
         self.config = config
@@ -21,52 +21,52 @@ class AlertController:
         self.preferences = None
 
     def set_iot_client(self, iot_client, preferences):
-        """IoT istemcisini ayarlar"""
+        """Sets the IoT client"""
         self.iot_client = iot_client
         self.preferences = preferences
 
     def setup(self):
-        """Uyarı sistemini yapılandırır"""
+        """Configures the alert system"""
         if not self.has_hardware:
-            self.logger.info("Simülasyon: Uyarı sistemi simülasyon modunda")
+            self.logger.info("Simulation: Alert system in simulation mode")
             return True
 
         try:
             import RPi.GPIO as GPIO
             self.gpio = GPIO
 
-            # Hoparlör pini
+            # Speaker pin
             self.gpio.setup(self.speaker_pin, self.gpio.OUT)
 
-            self.logger.info("Uyarı sistemi başarıyla yapılandırıldı")
+            self.logger.info("Alert system configured successfully")
             return True
 
         except Exception as e:
-            self.logger.error(f"Uyarı sistemi başlatma hatası: {e}")
+            self.logger.error(f"Alert system initialization error: {e}")
             return False
 
     def play_warning_sound(self):
-        """Uyarı sesi çalar"""
+        """Plays warning sound"""
         if not self.has_hardware:
-            self.logger.info("SİMÜLASYON: Uyarı sesi çalınıyor...")
+            self.logger.info("SIMULATION: Playing warning sound...")
 
-            # Olay geçmişine ekle
+            # Add to event history
             if self.iot_client:
                 event_type = "SECURITY_WARNING"
-                description = "Uyarı sesi çalındı (simülasyon)"
+                description = "Warning sound played (simulation)"
                 self.iot_client.publish_room_event(event_type, description)
 
             return True
 
         try:
             if self.preferences and self.preferences.user_preferences.get("voiceReports", False):
-                self.logger.info("Uyarı sesi çalınıyor...")
+                self.logger.info("Playing warning sound...")
                 self.gpio.setup(self.speaker_pin, self.gpio.OUT)
-                pwm = self.gpio.PWM(self.speaker_pin, 1000)  # 1 kHz frekans
-                pwm.start(50)  # %50 görev döngüsü
+                pwm = self.gpio.PWM(self.speaker_pin, 1000)  # 1 kHz frequency
+                pwm.start(50)  # 50% duty cycle
 
-                # Uyarı sesi çal
-                for _ in range(5):  # 5 bip
+                # Play warning sound
+                for _ in range(5):  # 5 beeps
                     pwm.ChangeFrequency(1000)  # 1 kHz
                     time.sleep(0.2)
                     pwm.ChangeFrequency(500)  # 500 Hz
@@ -74,19 +74,19 @@ class AlertController:
 
                 pwm.stop()
 
-            # Olay geçmişine ekle
+            # Add to event history
             if self.iot_client:
                 event_type = "ALERT"
-                description = "Tehlikeli gaz seviyesi tespit edildi."
+                description = "Dangerous gas level detected."
                 self.iot_client.publish_room_event(event_type, description)
 
             return True
 
         except Exception as e:
-            self.logger.error(f"Uyarı sesi çalma hatası: {e}")
+            self.logger.error(f"Warning sound play error: {e}")
             return False
 
     def show_notification(self, message):
-        """Ekran/LED üzerinde bir bildirim gösterir"""
-        self.logger.info(f"Bildirim: {message}")
-        # LED veya ekran ile bildirim gösterme fonksiyonu burada
+        """Shows a notification on Screen/LED"""
+        self.logger.info(f"Notification: {message}")
+        # Function to show notification with LED or screen here

@@ -24,7 +24,7 @@ class NavigationService {
       ref.read(sessionIdProvider.notifier).state = sessionId;
     }
 
-    // Panel sayfasına geçiş yap
+    // Navigate to dashboard page
     if (isAuthenticated) {
       navigateToDashboard();
     }

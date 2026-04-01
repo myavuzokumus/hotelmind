@@ -34,12 +34,12 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> with _DashboardMixin, SingleTickerProviderStateMixin {
 
-  // _DashboardScreenState içinde initState metoduna ekle
+  // add to initState method in _DashboardScreenState
   @override
   void initState() {
     super.initState();
 
-    // Mixin'deki animasyon başlatma metodunu çağır ve this (TickerProvider) geçir
+    // Call animation start method in Mixin and pass this (TickerProvider)
     initAIAnimation(this);
   }
 
@@ -51,10 +51,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),
-          clipBehavior: Clip.antiAlias, // Köşelerden taşan içeriği kırpmak için
-          insetPadding: EdgeInsets.all(16), // Ekrandan uzaklık
+          clipBehavior: Clip.antiAlias, // To crop content overflowing from corners
+          insetPadding: EdgeInsets.all(16), // Distance from screen
           child: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.75, // Genişlik sınırlama
+            width: MediaQuery.of(context).size.width * 0.75, // Width limitation
             child: SettingsScreen(roomId: _roomId, sessionId: _currentSessionId),
           ),
         );
@@ -68,15 +68,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Temizlik Talebi'),
+        title: Text('Cleaning Request'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Temizlik ekibine iletilecek talebiniz var mı?'),
+            Text('Do you have any requests to pass on to the cleaning team?'),
             SizedBox(height: 16),
             TextField(
               decoration: InputDecoration(
-                hintText: 'Ekstra havlu, ekstra çarşaf, vb.',
+                hintText: 'Extra towels, extra sheets, etc.',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
@@ -89,7 +89,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('İptal'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -98,42 +98,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                 //await _roomService.sendCleaningRequest(_roomId, note);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Temizlik talebiniz iletildi'),
+                    content: Text('Your cleaning request has been submitted'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Talep gönderilirken hata oluştu'),
+                    content: Text('An error occurred while sending the request'),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
-            child: Text('Talep Gönder'),
+            child: Text('Send Request'),
           ),
         ],
       ),
     );
   }
 
-  // YENİ: Resepsiyona mesaj gönder
+  // NEW: Send message to reception
   Future<void> _showReceptionMessageDialog() async {
     String message = '';
 
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Resepsiyona Mesaj'),
+        title: Text('Message to Reception'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Mesajınızı yazın:'),
+            Text('Type your message:'),
             SizedBox(height: 16),
             TextField(
               decoration: InputDecoration(
-                hintText: 'Mesajınızı buraya yazın...',
+                hintText: 'Type your message here...',
                 border: OutlineInputBorder(),
               ),
               maxLines: 5,
@@ -146,14 +146,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('İptal'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
               if (message.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Lütfen bir mesaj yazın'),
+                    content: Text('Please write a message'),
                     backgroundColor: Colors.orange,
                   ),
                 );
@@ -165,39 +165,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                 //await _roomService.sendMessageToReception(_roomId, message);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Mesajınız resepsiyona iletildi'),
+                    content: Text('Your message has been sent to reception'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Mesaj gönderilirken hata oluştu'),
+                    content: Text('An error occurred while sending the message'),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
-            child: Text('Gönder'),
+            child: Text('Send'),
           ),
         ],
       ),
     );
   }
 
-  // Aktif kullanıcıları görüntüleme diyalogu
+  // Dialog for viewing active users
   Future<void> _showActiveUsersDialog() async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Odadaki Aktif Oturumlar'),
+        title: Text('Active Sessions in the Room'),
         content: SizedBox(
-          width: double.maxFinite, // Dialog genişliğini ayarla
-          height: 300, // Yükseklik ekleyelim
+          width: double.maxFinite, // Set dialog width
+          height: 300, // Add height
           child: FutureBuilder<List<QrSession?>>(
             future: _getActiveUsersForRoom(_roomId),
             builder: (context, snapshot) {
-              // Yüklenirken
+              // While loading
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(
                   child: Column(
@@ -205,13 +205,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(height: 16),
-                      Text('Aktif kullanıcılar yükleniyor...')
+                      Text('Loading active users...')
                     ],
                   ),
                 );
               }
 
-              // Hata durumu
+              // Error state
               if (snapshot.hasError) {
                 return Center(
                   child: Column(
@@ -219,7 +219,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                     children: [
                       Icon(Icons.error_outline, color: Colors.red, size: 48),
                       SizedBox(height: 16),
-                      Text('Hata oluştu: ${snapshot.error}',
+                      Text('Error occurred: ${snapshot.error}',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.red),
                       ),
@@ -228,40 +228,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                 );
               }
 
-              // Veri boşsa
+              // If data is empty
               final activeUsers = snapshot.data;
               if (activeUsers == null || activeUsers.isEmpty) {
-                return Center(child: Text('Aktif oturum bulunamadı.'));
+                return Center(child: Text('No active session found.'));
               }
 
-              // Veri varsa
+              // If data exists
               return ListView.builder(
                 shrinkWrap: true,
                 itemCount: activeUsers.length,
                 itemBuilder: (context, index) {
                   final userSession = activeUsers[index];
-                  if (userSession == null) return SizedBox.shrink(); // Null kontrolü
+                  if (userSession == null) return SizedBox.shrink(); // Null check
 
                   bool isCurrentUser = userSession.sessionId == widget.sessionId;
 
                   return ListTile(
                     leading: Icon(isCurrentUser ? Icons.person_pin : Icons.person_outline),
-                    title: Text(isCurrentUser ? 'Siz (Bu Oturum)' : 'Diğer Kullanıcı'),
-                    subtitle: Text('Oturum ID: ...${userSession.sessionId.substring(userSession.sessionId.length - 6)}'),
+                    title: Text(isCurrentUser ? 'You (This Session)' : 'Other User'),
+                    subtitle: Text('Session ID: ...${userSession.sessionId.substring(userSession.sessionId.length - 6)}'),
                     trailing: isCurrentUser
                         ? null
                         : IconButton(
                       icon: Icon(Icons.logout, color: Colors.red),
-                      tooltip: 'Oturumu Sonlandır',
+                      tooltip: 'Terminate Session',
                       onPressed: () async {
                         bool confirm = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: Text('Oturumu Sonlandır'),
-                            content: Text('Bu kullanıcının oturumunu sonlandırmak istediğinizden emin misiniz?'),
+                             title: Text('Terminate Session'),
+                            content: Text("Are you sure you want to terminate this user's session?"),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(context, false), child: Text('İptal')),
-                              TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Sonlandır', style: TextStyle(color: Colors.red))),
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel')),
+                              TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Terminate', style: TextStyle(color: Colors.red))),
                             ],
                           ),
                         ) ?? false;
@@ -269,7 +269,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                         if (confirm) {
                           Navigator.pop(context);
                           await _terminateUserSession(userSession.sessionId);
-                          _showActiveUsersDialog(); // Listeyi yenilemek için tekrar aç
+                          _showActiveUsersDialog(); // Reopen to refresh the list
                         }
                       },
                     ),
@@ -282,7 +282,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Kapat'),
+            child: Text('Close'),
           ),
         ],
       ),
@@ -293,7 +293,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: Text('Oda Yönetim Paneli')),
+        appBar: AppBar(title: Text('Room Control Panel')),
         body: Center(child: CircularProgressIndicator()),
       );
     }
@@ -302,18 +302,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: Text('Oda Yönetim Paneli', style: TextStyle(color: Colors.blue)),
+        title: Text('Room Control Panel', style: TextStyle(color: Colors.blue)),
         centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(Icons.people, color: Colors.blue),
-            tooltip: 'Mevcut Kullanıcılar',
+            tooltip: 'Current Users',
             onPressed: _showActiveUsersDialog,
           ),
           IconButton(
             icon: Icon(Icons.settings, color: Colors.blue),
-            tooltip: 'Ayarlar',
-            onPressed: _showSettingsDialog, // NavigationService yerine dialog göster
+            tooltip: 'Settings',
+            onPressed: _showSettingsDialog, // Show dialog instead of NavigationService
           ),
           AnimatedBuilder(
             animation: _isLoggingOut,
@@ -329,23 +329,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                   ),
                 )
                     : Icon(Icons.exit_to_app, color: Colors.red),
-                tooltip: 'Oturumu Sonlandır',
+                tooltip: 'Terminate Session',
                 onPressed: _isLoggingOut.value
                     ? null
                     : () async {
                   _isLoggingOut.value = true;
                   try {
-                    // Oturumu sonlandırma işlemi
+                    // Terminate session process
                     await _terminateUserSession(widget.sessionId);
 
-                    // NavigationService'deki updateAuthState metodunu kullanarak oturum bilgilerini sıfırla
+                    // Reset session info using updateAuthState method in NavigationService
                     ref.read(navigationServiceProvider).updateAuthState(
                         isAuthenticated: false,
                         roomId: null,
                         sessionId: null);
 
                     if (mounted) {
-                      // Ana sayfaya yönlendir
+                      // Redirect to home page
                       ref.read(navigationServiceProvider).navigateToHome();
                     }
                   } finally {
@@ -371,7 +371,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Karşılama ve durum alanı - Web için uyarlandı
+                    // Greeting and status area - Adapted for Web
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -382,7 +382,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                       child: Column(
                         children: [
                           Text(
-                            'Hoş geldiniz, $_userName',
+                            'Welcome, $_userName',
                             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
                           ),
                           SizedBox(height: 8),
@@ -393,7 +393,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                           ),
                           SizedBox(height: 16),
                           Text(
-                            'Oda Durumu: ${_isRoomOccupied ? "Dolu" : "Boş"} | Mod: $_roomMode',
+                            'Room Status: ${_isRoomOccupied ? "Occupied" : "Empty"} | Mode: $_roomMode',
                             style: TextStyle(fontSize: 18, color: Colors.grey[700]),
                           ),
                         ],
@@ -401,7 +401,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                     ),
                     SizedBox(height: 24),
 
-                    // Canlı sensör verileri - Web benzeri responsive grid
+                    // Live sensor data - Web-like responsive grid
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: 16,
@@ -409,10 +409,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                       children: [
                         SizedBox(
                           width: MediaQuery.of(context).size.width > 1200
-                        ? 280 // Geniş ekranlarda sabit genişlik
+                        ? 280 // Fixed width on wide screens
                         : 218,
                           child: RoomStatusCard(
-                            title: 'Sıcaklık',
+                            title: 'Temperature',
                             value: '${_currentTemperature.toStringAsFixed(1)}°C',
                             icon: Icons.thermostat,
                             color: _getSensorColor(_currentTemperature, 18, 25),
@@ -420,10 +420,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                         ),
                         SizedBox(
                           width: MediaQuery.of(context).size.width > 1200
-                              ? 280 // Geniş ekranlarda sabit genişlik
+                              ? 280 // Fixed width on wide screens
                               : 218,
                           child: RoomStatusCard(
-                            title: 'Nem',
+                            title: 'Humidity',
                             value: '${_currentHumidity.toStringAsFixed(1)}%',
                             icon: Icons.water_drop,
                             color: _getSensorColor(_currentHumidity, 40, 60),
@@ -431,10 +431,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                         ),
                         SizedBox(
                           width: MediaQuery.of(context).size.width > 600
-                              ? 280 // Geniş ekranlarda sabit genişlik
+                              ? 280 // Fixed width on wide screens
                               : 218,
                           child: RoomStatusCard(
-                            title: 'Gaz Seviyesi',
+                            title: 'Gas Level',
                             value: '$_currentGasLevel/10',
                             icon: Icons.cloud,
                             color: _getGasColor(_currentGasLevel),
@@ -442,11 +442,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                         ),
                         SizedBox(
                           width: MediaQuery.of(context).size.width > 600
-                              ? 280 // Geniş ekranlarda sabit genişlik
+                              ? 280 // Fixed width on wide screens
                               : 218,
                           child: RoomStatusCard(
-                            title: 'Kart Durumu',
-                            value: _isCardInserted ? 'Takılı' : 'Takılı Değil',
+                            title: 'Card Status',
+                            value: _isCardInserted ? 'Inserted' : 'Not Inserted',
                             icon: Icons.credit_card,
                             color: _isCardInserted ? Colors.green : Colors.red,
                           ),
@@ -455,7 +455,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                     ),
                     SizedBox(height: 24),
 
-                    // Oda Kontrol Bölümü - Web için uyarlandı
+                    // Room Control Section - Adapted for Web
                     Card(
                       elevation: 4,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -469,34 +469,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                                 Icon(Icons.room_preferences, color: Colors.blue, size: 28),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Oda Kontrolleri',
+                                  'Room Controls',
                                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
                                 ),
                               ],
                             ),
                             SizedBox(height: 24),
 
-                            // Aydınlatma ve Cihaz Kontrolleri yan yana - Web için responsive
+                            // Lighting and Device Controls side by side - Responsive for Web
                             LayoutBuilder(
                                 builder: (context, constraints) {
                                   if (constraints.maxWidth > 800) {
-                                    // Geniş ekran - yan yana
+                                    // Wide screen - side by side
                                     return Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // Aydınlatma Kontrolleri
+                                        // Lighting Controls
                                         Expanded(
                                           child: _buildLightingControls(),
                                         ),
                                         SizedBox(width: 24),
-                                        // Cihaz Kontrolleri
+                                        // Device Controls
                                         Expanded(
                                           child: _buildDeviceControls(),
                                         ),
                                       ],
                                     );
                                   } else {
-                                    // Dar ekran - alt alta
+                                    // Narrow screen - one below the other
                                     return Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -511,9 +511,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
 
                             Divider(height: 40, thickness: 1),
 
-                            // Hizmet Butonları - Web için uyarlandı
+                            // Service Buttons - Adapted for Web
                             Text(
-                              'Hizmetler',
+                              'Services',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -529,7 +529,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                                 ElevatedButton.icon(
                                   onPressed: _showCleaningRequestDialog,
                                   icon: Icon(Icons.cleaning_services),
-                                  label: Text('Temizlik Talep Et'),
+                                  label: Text('Request Cleaning'),
                                   style: ElevatedButton.styleFrom(
                                     padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                                     textStyle: TextStyle(fontSize: 16),
@@ -538,7 +538,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                                 ElevatedButton.icon(
                                   onPressed: _showReceptionMessageDialog,
                                   icon: Icon(Icons.message),
-                                  label: Text('Resepsiyona Mesaj Gönder'),
+                                  label: Text('Send Message to Reception'),
                                   style: ElevatedButton.styleFrom(
                                     padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                                     textStyle: TextStyle(fontSize: 16),
@@ -557,11 +557,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
 
                     SizedBox(height: 32),
 
-                    // Sensör grafikleri - Web için uyarlandı
+                    // Sensor graphs - Adapted for Web
                     LayoutBuilder(
                         builder: (context, constraints) {
                           if (constraints.maxWidth > 900) {
-                            // Geniş ekran - yan yana grafikler
+                            // Wide screen - side by side graphs
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -575,7 +575,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                               ],
                             );
                           } else {
-                            // Dar ekran - alt alta grafikler
+                            // Narrow screen - one below the other graphs
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -590,7 +590,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
 
                     SizedBox(height: 32),
 
-                    // Son olaylar - Web için uyarlandı
+                    // Recent events - Adapted for Web
                     Card(
                       elevation: 4,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -604,7 +604,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                                 Icon(Icons.history, color: Colors.blue, size: 28),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Son Olaylar',
+                                  'Recent Events',
                                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
                                 ),
                               ],
@@ -625,13 +625,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
     );
   }
 
-  // Aydınlatma kontrolleri widget'ı
+  // Lighting controls widget
   Widget _buildLightingControls() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-            'Aydınlatma',
+            'Lighting',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
         ),
         SizedBox(height: 8),
@@ -641,28 +641,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
           child: Column(
             children: [
               SwitchListTile(
-                title: Text('Ana Aydınlatma'),
+                title: Text('Main Lighting'),
                 value: _mainLightOn,
                 secondary: Icon(Icons.lightbulb, color: _mainLightOn ? Colors.yellow : Colors.grey),
                 onChanged: (value) => _toggleLight('main', value),
               ),
               Divider(height: 1),
               SwitchListTile(
-                title: Text('Masa Işığı'),
+                title: Text('Desk Light'),
                 value: _deskLightOn,
                 secondary: Icon(Icons.desk, color: _deskLightOn ? Colors.yellow : Colors.grey),
                 onChanged: (value) => _toggleLight('desk', value),
               ),
               Divider(height: 1),
               SwitchListTile(
-                title: Text('Yatak Işığı'),
+                title: Text('Bed Light'),
                 value: _bedLightOn,
                 secondary: Icon(Icons.bed, color: _bedLightOn ? Colors.yellow : Colors.grey),
                 onChanged: (value) => _toggleLight('bed', value),
               ),
               Divider(height: 1),
               SwitchListTile(
-                title: Text('Banyo Işığı'),
+                title: Text('Bathroom Light'),
                 value: _bathroomLightOn,
                 secondary: Icon(Icons.bathroom, color: _bathroomLightOn ? Colors.yellow : Colors.grey),
                 onChanged: (value) => _toggleLight('bathroom', value),
@@ -674,13 +674,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
     );
   }
 
-  // Cihaz kontrolleri widget'ı
+  // Device controls widget
   Widget _buildDeviceControls() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-            'Cihazlar',
+            'Devices',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
         ),
         SizedBox(height: 8),
@@ -690,14 +690,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
           child: Column(
             children: [
               SwitchListTile(
-                title: Text('Televizyon'),
+                title: Text('Television'),
                 value: _tvOn,
                 secondary: Icon(Icons.tv, color: _tvOn ? Colors.blue : Colors.grey),
                 onChanged: (value) => _toggleDevice('tv', value),
               ),
               Divider(height: 1),
               SwitchListTile(
-                title: Text('Klima'),
+                title: Text('AC'),
                 value: _acOn,
                 secondary: Icon(Icons.ac_unit, color: _acOn ? Colors.blue : Colors.grey),
                 onChanged: (value) => _toggleDevice('ac', value),
@@ -709,7 +709,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
     );
   }
 
-  // Sıcaklık grafiği widget'ı
+  // Temperature graph widget
   Widget _buildTemperatureChart() {
     return Card(
       elevation: 4,
@@ -720,7 +720,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Sıcaklık Grafiği',
+              'Temperature Graph',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
@@ -729,7 +729,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
               child: SensorChart(
                 data: _temperatureHistory,
                 color: Colors.orange,
-                label: 'Sıcaklık (°C)',
+                label: 'Temperature (°C)',
               ),
             ),
           ],
@@ -738,7 +738,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
     );
   }
 
-  // Nem grafiği widget'ı
+  // Humidity graph widget
   Widget _buildHumidityChart() {
     return Card(
       elevation: 4,
@@ -749,7 +749,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Nem Grafiği',
+              'Humidity Graph',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
@@ -758,7 +758,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
               child: SensorChart(
                 data: _humidityHistory,
                 color: Colors.blue,
-                label: 'Nem (%)',
+                label: 'Humidity (%)',
               ),
             ),
           ],
@@ -808,7 +808,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with _Dashboa
                   ),
                   SizedBox(height: 12),
                   Text(
-                    _aiAssistantEnabled ? 'AI Asistan Aktif' : 'AI Asistan Devre Dışı',
+                    _aiAssistantEnabled ? 'AI Assistant Active' : 'AI Assistant Disabled',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

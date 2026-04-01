@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'debug_log_provider.dart';
 
-// AuthService için provider tanımı
+// Provider definition for AuthService
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
@@ -16,12 +16,12 @@ class AuthService {
 
   AuthService();
 
-  // Rate limiting için değişkenler
+  // Rate limiting variables
   static const String _RATE_LIMIT_KEY = "qr_scan_timestamps";
   static const int _MAX_REQUESTS_PER_MINUTE = 10;
   static const int _WINDOW_SECONDS = 60;
 
-  // Rate limiting kontrolü
+  // Rate limiting check
   Future<bool> _checkRateLimit() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -35,44 +35,44 @@ class AuthService {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final windowStart = now - _WINDOW_SECONDS;
 
-      // Zaman aralığı dışındaki kayıtları temizle
+      // Clear records outside the time window
       timestamps = timestamps.where((time) => time >= windowStart).toList();
 
-      // Son isteklerin sayısını kontrol et
+      // Check the number of recent requests
       if (timestamps.length >= _MAX_REQUESTS_PER_MINUTE) {
-        log("Rate limit aşıldı! Son 1 dakikada $_MAX_REQUESTS_PER_MINUTE istek yapıldı.");
+        log("Rate limit exceeded! $_MAX_REQUESTS_PER_MINUTE requests made in the last 1 minute.");
         return false;
       }
 
-      // Yeni timestamp ekle
+      // Add new timestamp
       timestamps.add(now);
       await prefs.setString(_RATE_LIMIT_KEY, jsonEncode(timestamps));
 
-      log("Rate limit kontrolü başarılı. Son 1 dakikada ${timestamps.length} istek.");
+      log("Rate limit check successful. ${timestamps.length} requests in the last 1 minute.");
       return true;
     } catch (e) {
-      log("Rate limit kontrolü sırasında hata: $e");
+      log("Error during rate limit check: $e");
       return false;
     }
   }
 
   Map<String, dynamic>? parseQrData(String qrData) {
-    // QR veriyi parse et
+    // Parse QR data
     Map<String, dynamic>? qrJson;
     try {
       qrJson = json.decode(qrData);
-      log("QR Kod JSON formatında başarıyla ayrıştırıldı.");
+      log("QR Code successfully parsed in JSON format.");
     } catch (e) {
-      log("QR kod JSON formatı ayrıştırma hatası: $e");
+      log("QR code JSON format parsing error: $e");
       return null;
     }
 
     if (qrJson == null) {
-      log("QR kod verileri ayrıştırılamadı");
+      log("QR code data could not be parsed");
       return null;
     }
 
-    log("QR Kod alanları kontrol ediliyor...");
+    log("Checking QR Code fields...");
     final roomId = qrJson['roomId'];
     final timestamp = qrJson['timestamp'];
     final expiry = qrJson['expiry'];
@@ -87,7 +87,7 @@ class AuthService {
 
     if (roomId == null || timestamp == null || expiry == null ||
         sessionId == null || signature == null) {
-      log("HATA: QR kod eksik alanlar içeriyor.");
+      log("ERROR: QR code continues missing fields.");
       return null;
     }
 
@@ -96,31 +96,31 @@ class AuthService {
 
   Future<ResponseModel<Map<String, dynamic>>> verifyQRCode(String qrData) async {
     try {
-      log("=== QR KOD DOĞRULAMA BAŞLADI ===");
+      log("=== QR CODE VERIFICATION STARTED ===");
 
       if (!await _checkRateLimit()) {
-        log("Çok fazla istek gönderildi. Lütfen biraz bekleyin.");
-        return ResponseModel.error("Çok fazla istek gönderildi. Lütfen biraz bekleyin.");
+        log("Too many requests sent. Please wait a bit.");
+        return ResponseModel.error("Too many requests sent. Please wait a bit.");
       }
 
-      log("Alınan QR veri: $qrData");
+      log("Received QR data: $qrData");
 
       Map<String, dynamic>? qrJson = parseQrData(qrData);
       if (qrJson == null) {
-        return ResponseModel.error("QR kod formatı geçerli değil.");
+        return ResponseModel.error("QR code format is not valid.");
       }
 
-      log("Süre kontrolü yapılıyor...");
+      log("Checking expiry...");
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final expiry = qrJson['expiry'];
-      log("Şu anki zaman: $now, Son geçerlilik: $expiry");
+      log("Current time: $now, Expiry: $expiry");
 
       if (now > expiry) {
-        log("HATA: QR kodun süresi dolmuş!");
-        return ResponseModel.error("QR kodun süresi dolmuş.");
+        log("ERROR: QR code has expired!");
+        return ResponseModel.error("QR code has expired.");
       }
 
-      log("QR kod zaman kontrolü başarılı. Kod hala geçerli.");
+      log("QR code time check successful. Code is still valid.");
 
       try {
         const document = '''
@@ -139,7 +139,7 @@ class AuthService {
         final response = await Amplify.API.query(request: request).response;
 
         if (response.data != null) {
-          log("Ham QR API yanıtı: ${response.data}");
+          log("Raw QR API response: ${response.data}");
 
           try {
             Map<String, dynamic> firstLevel = jsonDecode(response.data!);
@@ -150,38 +150,38 @@ class AuthService {
             bool isValid = thirdLevel['isValid'];
             String message = thirdLevel['message'];
 
-            log("API Durum Kodu: $statusCode");
-            log("Doğrulama Sonucu: $isValid");
-            log("Mesaj: $message");
+            log("API Status Code: $statusCode");
+            log("Verification Result: $isValid");
+            log("Message: $message");
 
             if (statusCode == 200) {
               if (isValid) {
                 return ResponseModel.success(qrJson);
               } else {
-                log("QR kodu geçerli değil: $message");
+                log("QR code is not valid: $message");
                 return ResponseModel.error(message);
               }
             } else {
-              log("API hata döndürdü: $message");
-              return ResponseModel.error("Sunucu hatası: $message");
+              log("API returned error: $message");
+              return ResponseModel.error("Server error: $message");
             }
           } catch (e) {
-            log("JSON ayrıştırma hatası: $e");
-            return ResponseModel.error("Sunucu yanıtı işlenirken hata oluştu.");
+            log("JSON parsing error: $e");
+            return ResponseModel.error("Error processing server response.");
           }
         } else if (response.errors.isNotEmpty) {
-          log("API hatası: ${response.errors.first.message}");
-          return ResponseModel.error("API hatası: ${response.errors.first.message}");
+          log("API error: ${response.errors.first.message}");
+          return ResponseModel.error("API error: ${response.errors.first.message}");
         }
 
-        return ResponseModel.error("Bilinmeyen bir hata oluştu.");
+        return ResponseModel.error("An unknown error occurred.");
       } catch (e) {
-        log("API çağrısı hatası: $e");
-        return ResponseModel.error("Sunucuya bağlanırken hata oluştu.");
+        log("API call error: $e");
+        return ResponseModel.error("Error connecting to server.");
       }
     } catch (e) {
-      log("QR kod doğrulama hatası: $e");
-      return ResponseModel.error("QR kod doğrulama hatası");
+      log("QR code verification error: $e");
+      return ResponseModel.error("QR code verification error");
     }
   }
 }

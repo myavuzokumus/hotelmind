@@ -12,15 +12,15 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
   late final String _currentSessionId;
 
   late final SensorService _sensorService;
-  final String _userName = 'Misafir';
+  final String _userName = 'Guest';
 
-  // Sensör verileri listeleri
+  // Sensor data lists
   final List<double> _temperatureHistory = [];
   final List<double> _humidityHistory = [];
   final List<int> _gasHistory = [];
   final List<Map<String, dynamic>> _eventHistory = [];
 
-  // Mevcut değerler
+  // Current values
   double _currentTemperature = 22.0;
   double _currentHumidity = 50.0;
   int _currentGasLevel = 0;
@@ -28,7 +28,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
   bool _isCardInserted = false;
   String _roomMode = "Normal";
 
-  // YENİ: Aydınlatma ve cihaz durumları
+  // NEW: Lighting and device statuses
   bool _mainLightOn = false;
   bool _deskLightOn = false;
   bool _bedLightOn = false;
@@ -36,7 +36,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
   bool _tvOn = false;
   bool _acOn = false;
 
-  // Abonelikler
+  // Subscriptions
   late StreamSubscription _temperatureSub;
   late StreamSubscription _humiditySub;
   late StreamSubscription _gasSub;
@@ -48,23 +48,23 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
   @override
   void initState() {
 
-    // Widget'tan gelen roomId ve sessionId değerlerini al
+    // Get roomId and sessionId from widget
     _roomId = widget.roomId;
     _currentSessionId = widget.sessionId;
 
     _initialize();
 
-    // Oturum sonlandırma olaylarını dinle
+    // Listen for session termination events
     _sessionTerminationSub = EventBus().onSessionTerminated.listen((terminatedSessionId) {
-      // Eğer sonlandırılan oturum bu cihazınkiyse ana sayfaya yönlendir
+      // If the terminated session belongs to this device, redirect to home page
       if (_currentSessionId == terminatedSessionId) {
-        // NavigationService ile ana sayfaya yönlendir
+        // Redirect to home page with NavigationService
         ref.read(navigationServiceProvider).navigateToHome();
 
-        // Bildirim göster
+        // Show notification
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Oturumunuz sonlandırıldı'),
+            content: Text('Your session has been terminated'),
             backgroundColor: Colors.red,
           ),
         );
@@ -77,14 +77,14 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
   Future<void> _initialize() async {
     try {
-      // Oda servisini başlat
+      // Initialize room service
       _roomService.initialize(roomId: _roomId);
 
-      // Sensör servisleri başlat
+      // Initialize sensor services
       _sensorService = SensorService();
       _sensorService.initialize(roomId: _roomId);
 
-      // Sensör verilerine abone ol
+      // Subscribe to sensor data
       _temperatureSub = _sensorService.temperatureStream.listen((value) {
         setState(() {
           _currentTemperature = value;
@@ -111,7 +111,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
       _distanceSub = _sensorService.distanceStream.listen((value) {
         setState(() {
-          _isRoomOccupied = value < 150; // 150cm altında kişi var kabul et
+          _isRoomOccupied = value < 150; // Assume occupied if distance is under 150cm
         });
       });
 
@@ -121,20 +121,20 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
         });
       });
 
-      // Oda olaylarına abone ol
+      // Subscribe to room events
       _eventSub = _roomService.eventStream.listen((event) {
         setState(() {
           _eventHistory.add(event);
           if (_eventHistory.length > 100) _eventHistory.removeAt(0);
 
-          // Oda modunu güncelle
+          // Update room mode
           if (event['type'] == 'MODE_CHANGE') {
             _roomMode = event['mode'];
           }
         });
       });
 
-      // Oda geçmişini yükle
+      // Load room history
       _loadRoomHistory();
 
       setState(() {
@@ -147,10 +147,10 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
   Future<void> _loadRoomHistory() async {
     try {
-      // Veritabanından son sensör verilerini al
+      // Get latest sensor data from database
       final sensorData = await _roomService.getSensorHistory(_roomId);
       log("Sensor data: $sensorData");
-      // Veritabanından son olayları al
+      // Get latest events from database
       final eventData = await _roomService.getEventHistory(_roomId);
       log("Event data: $eventData");
 
@@ -177,7 +177,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
     }
   }
 
-  // YENİ: Aydınlatma kontrol metodları
+  // NEW: Lighting control methods
   Future<void> _toggleLight(String type, bool value) async {
     try {
       setState(() {
@@ -197,7 +197,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
         }
       });
 
-      // Servise bilgiyi gönder
+      // Send info to service
       await _roomService.setRoomControl(_roomId, {
         'type': 'light',
         'lightType': type,
@@ -206,22 +206,22 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${_getLightName(type)} ${value ? 'açıldı' : 'kapatıldı'}'),
+          content: Text('${_getLightName(type)} ${value ? 'turned on' : 'turned off'}'),
           duration: Duration(seconds: 1),
         ),
       );
     } catch (e) {
-      log('Aydınlatma kontrolü hatası: $e');
+      log('Lighting control error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('İşlem sırasında bir hata oluştu'),
+          content: Text('An error occurred during the operation'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  // YENİ: Cihaz kontrolleri
+  // NEW: Device controls
   Future<void> _toggleDevice(String type, bool value) async {
     try {
       setState(() {
@@ -235,7 +235,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
         }
       });
 
-      // Servise bilgiyi gönder
+      // Send info to service
       await _roomService.setRoomControl(_roomId, {
         'type': 'device',
         'deviceType': type,
@@ -244,67 +244,67 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${_getDeviceName(type)} ${value ? 'açıldı' : 'kapatıldı'}'),
+          content: Text('${_getDeviceName(type)} ${value ? 'turned on' : 'turned off'}'),
           duration: Duration(seconds: 1),
         ),
       );
     } catch (e) {
-      log('Cihaz kontrolü hatası: $e');
+      log('Device control error: $e');
     }
   }
 
-  // dashboard_mixin.dart dosyasına ekleyin
+  // add to dashboard_mixin.dart
   void _toggleAI(bool value) {
     setState(() {
       _aiAssistantEnabled = value;
     });
 
-    // Eğer aktive edildiyse animasyonu başlat, aksi halde durdur
+    // If activated, start animation, otherwise stop it
     if (_aiAssistantEnabled) {
       _aiButtonAnimController.repeat();
     } else {
       _aiButtonAnimController.stop();
     }
 
-    // EventBus üzerinden olayı yayınla
+    // Publish event via EventBus
     //ref.read(eventBusProvider).publish(
-    //  'AI Asistan ${_aiAssistantEnabled ? "aktifleştirildi" : "devre dışı bırakıldı"}',
+    //  'AI Assistant ${_aiAssistantEnabled ? "activated" : "deactivated"}',
     //);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_aiAssistantEnabled
-            ? 'AI Asistan aktifleştirildi'
-            : 'AI Asistan devre dışı bırakıldı'),
+            ? 'AI Assistant activated'
+            : 'AI Assistant deactivated'),
         backgroundColor: _aiAssistantEnabled ? Colors.green : Colors.grey,
       ),
     );
   }
 
-  // YENİ: Yardımcı metotlar
+  // NEW: Helper methods
   String _getLightName(String type) {
     switch (type) {
-      case 'main': return 'Ana aydınlatma';
-      case 'desk': return 'Masa ışığı';
-      case 'bed': return 'Yatak ışığı';
-      case 'bathroom': return 'Banyo ışığı';
-      default: return 'Işık';
+      case 'main': return 'Main lighting';
+      case 'desk': return 'Desk light';
+      case 'bed': return 'Bed light';
+      case 'bathroom': return 'Bathroom light';
+      default: return 'Light';
     }
   }
 
   String _getDeviceName(String type) {
     switch (type) {
-      case 'tv': return 'Televizyon';
-      case 'ac': return 'Klima';
-      default: return 'Cihaz';
+      case 'tv': return 'Television';
+      case 'ac': return 'AC';
+      default: return 'Device';
     }
   }
 
-  // QrSession tablosundan aktif oturum bilgilerini getir
+  // Get active session info from QrSession table
   Future<List<QrSession?>> _getActiveUsersForRoom(String roomId) async {
     try {
 
-      // ModelQueries.list ile QrSession verilerini sorgula
+      // Query QrSession data with ModelQueries.list
       final request = ModelQueries.list(
         QrSession.classType,
         where: QrSession.ROOMID.eq(roomId),
@@ -324,15 +324,15 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
 
       return <QrSession>[];
     } catch (e) {
-      log("Aktif kullanıcıları alma hatası: $e");
+      log("Error getting active users: $e");
       rethrow;
     }
   }
 
-  // Kullanıcı oturumunu sonlandır
+  // Terminate user session
   Future<void> _terminateUserSession(String sessionId) async {
     try {
-      // Önce mevcut oturumu getir
+      // First get current session
       final getRequest = ModelQueries.get(
         QrSession.classType,
         QrSessionModelIdentifier(sessionId: sessionId),
@@ -342,14 +342,14 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
       final getResponse = await Amplify.API.query(request: getRequest).response;
 
       if (getResponse.errors.isNotEmpty) {
-        throw Exception("Oturum bilgisi alınamadı: ${getResponse.errors.first.message}");
+        throw Exception("Could not get session info: ${getResponse.errors.first.message}");
       }
 
       if (getResponse.data == null) {
-        throw Exception("Oturum bulunamadı");
+        throw Exception("Session not found");
       }
 
-      // Oturumu sil
+      // Delete session
       final deleteRequest = ModelMutations.delete(getResponse.data!,
           authorizationMode: APIAuthorizationType.apiKey);
 
@@ -359,36 +359,36 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
         throw Exception(deleteResponse.errors.first.message);
       }
 
-      // Başarılı olursa bildirim göster
+      // If successful, show notification
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Kullanıcı oturumu sonlandırıldı'),
+          content: Text('User session terminated'),
           backgroundColor: Colors.green,
         ),
       );
 
-      // Oturum sonlandırma olayını yayınla
+      // Publish session termination event
       EventBus().terminateSession(sessionId);
 
     } catch (e) {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Oturum sonlandırılamadı: $e'),
+          content: Text('Could not terminate session: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  // Sensör rengi belirle
+  // Determine sensor color
   Color _getSensorColor(double value, double min, double max) {
     if (value < min) return Colors.blue;
     if (value > max) return Colors.red;
     return Colors.green;
   }
 
-  // Gaz seviyesi rengi belirle
+  // Determine gas level color
   Color _getGasColor(int value) {
     if (value <= 2) return Colors.green;
     if (value <= 5) return Colors.orange;
@@ -410,7 +410,7 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
     super.dispose();
   }
 
-  // dashboard_mixin.dart dosyasına AnimationController ekleyin
+  // add AnimationController to dashboard_mixin.dart
   late AnimationController _aiButtonAnimController;
   late Animation<Color?> _aiButtonColorAnimation;
   final List<Color> _aiButtonColors = [
@@ -422,11 +422,11 @@ mixin _DashboardMixin on ConsumerState<DashboardScreen> {
     Colors.indigo,
   ];
 
-  // Animasyon controller'ı başlatma işlemini ayır
+  // Separate animation controller initialization process
   void initAIAnimation(TickerProvider vsync) {
     _aiButtonAnimController = AnimationController(
       duration: Duration(seconds: 3),
-      vsync: vsync, // State'ten gelen vsync kullanılıyor
+      vsync: vsync, // using vsync from State
     )..repeat();
 
     _aiButtonColorAnimation = _aiButtonAnimController

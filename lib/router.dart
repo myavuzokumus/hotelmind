@@ -16,7 +16,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     debugLogDiagnostics: true,
     redirect: (context, state) {
-      // Dashboard'a erişim kontrolü
+      // Dashboard access control
       if (state.matchedLocation == '/dashboard' && (!isAuthenticated || roomId == null || sessionId == null)) {
         return '/';
       }
@@ -25,7 +25,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       ShellRoute(
         builder: (context, state, child) {
-          // URL'den tab indeksini belirle
+          // Determine tab index from URL
           int initialTabIndex;
           switch (state.matchedLocation) {
             case '/qr_scanner':
@@ -41,7 +41,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               initialTabIndex = 0;
           }
 
-          // Tab değişimini takip et ve URL'yi güncelle
+          // Track tab change and update URL
           ref.listen(selectedTabIndexProvider, (previous, next) {
             String newLocation;
             switch (next) {
@@ -58,13 +58,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 newLocation = '/';
             }
 
-            // Eğer URL zaten aynı değilse güncelle
+            // Update if URL is not already the same
             if (state.matchedLocation != newLocation) {
               context.go(newLocation);
             }
           });
 
-          // AppScaffold'u başlangıç tab indeksiyle döndür
+          // Return AppScaffold with initial tab index
           return AppScaffold(initialTab: initialTabIndex);
         },
         routes: [
@@ -78,21 +78,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/qr_scanner',
             pageBuilder: (context, state) => NoTransitionPage(
-              child: Container(), // AppScaffold içinde yönetiliyor
+              child: Container(), // Managed within AppScaffold
               key: state.pageKey,
             ),
           ),
           GoRoute(
             path: '/dashboard',
             pageBuilder: (context, state) => NoTransitionPage(
-              child: Container(), // AppScaffold içinde yönetiliyor
+              child: Container(), // Managed within AppScaffold
               key: state.pageKey,
             ),
           ),
           GoRoute(
             path: '/admin_login',
             pageBuilder: (context, state) => NoTransitionPage(
-              child: Container(), // AppScaffold içinde yönetiliyor
+              child: Container(), // Managed within AppScaffold
               key: state.pageKey,
             ),
           ),
@@ -104,7 +104,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
               if (roomId == null || sessionId == null) {
                 return NotFoundScreen(
-                    message: 'Bu sayfaya erişmek için geçerli bir oda ve oturum bilgisi gereklidir.'
+                    message: 'A valid room and session information is required to access this page.'
                 );
               }
 

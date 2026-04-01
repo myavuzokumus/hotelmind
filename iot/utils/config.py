@@ -4,30 +4,30 @@ from pathlib import Path
 
 
 class Config:
-    """Tüm sistem konfigürasyonlarını yöneten sınıf"""
+    """Class that manages all system configurations"""
 
-    # Varsayılan değerler
+    # Default values
     DEFAULT_CONFIG = {
         "thingName": "room_001",
         "clientId": "room_001",
         "roomId": "room_001",
     }
 
-    # GPIO pin tanımlamaları
+    # GPIO pin definitions
     GPIO_CONFIG = {
-        "GAS_SENSOR_PIN": 21,  # MQ-2 için GPIO21
-        "IR_PIN": 18,  # IR sensör pini (algılama için)
-        "IR_TRANSMITTER_PIN": 17,  # IR verici pini (kontrol için)
+        "GAS_SENSOR_PIN": 21,  # GPIO21 for MQ-2
+        "IR_PIN": 18,  # IR sensor pin (for detection)
+        "IR_TRANSMITTER_PIN": 17,  # IR transmitter pin (for control)
         "DISTANCE_TRIG_PIN": 16,  # HC-SR04 Trigger pin
         "DISTANCE_ECHO_PIN": 20,  # HC-SR04 Echo pin
-        "SPEAKER_PIN": 23,  # Hoparlör için PWM pini
-        "LED_MAIN_PIN": 13,  # LED için GPIO pini
-        "LED_DESK_PIN": 26,  # Alarm LED'i için GPIO pini
+        "SPEAKER_PIN": 23,  # PWM pin for speaker
+        "LED_MAIN_PIN": 13,  # GPIO pin for LED
+        "LED_DESK_PIN": 26,  # GPIO pin for Alarm LED
     }
 
-    # BMP280 tanımlamaları
+    # BMP280 definitions
     BMP280_CONFIG = {
-        "ADDRESS": 0x76,  # BMP280 I2C adresi (0x76 veya 0x77 olabilir)
+        "ADDRESS": 0x76,  # BMP280 I2C address (can be 0x76 or 0x77)[0m
         "REG_DIG_T1": 0x88,
         "REG_DIG_T2": 0x8A,
         "REG_DIG_T3": 0x8C,
@@ -56,7 +56,7 @@ class Config:
         self.certs_dir = self.script_dir / "certs"
         self.config = self.DEFAULT_CONFIG.copy()
 
-        # Gizli konfigürasyonları git'ten bağımsız secrets.json dosyasından oku
+        # Read secret configurations from git-independent secrets.json file
         secrets_file = self.certs_dir / "secrets.json"
         if secrets_file.exists():
             import json
@@ -65,54 +65,54 @@ class Config:
                     secrets = json.load(f)
                     self.config.update(secrets)
             except Exception as e:
-                logging.error(f"secrets.json okunamadı: {e}")
+                logging.error(f"Could not read secrets.json: {e}")
 
-        # Sertifika yollarını ayarla
+        # Set certificate paths
         self.config.update({
             "rootCAPath": str(self.certs_dir / "root-CA.crt"),
             "certificatePath": str(self.certs_dir / f"{self.config['thingName']}.cert.pem"),
             "privateKeyPath": str(self.certs_dir / f"{self.config['thingName']}.private.key"),
         })
 
-        # Donanım kontrolleri
+        # Hardware checks
         self.has_hardware = self._check_hardware()
 
     def _check_hardware(self):
-        """Donanım kütüphanelerinin kullanılabilirliğini kontrol eder"""
+        """Checks the availability of hardware libraries"""
         hardware_available = True
 
-        # RPi.GPIO kütüphanesini kontrol et
+        # Check RPi.GPIO library
         try:
             import RPi.GPIO as GPIO
-            GPIO.setmode(GPIO.BCM)  # BCM mod için ayarlama ekle
+            GPIO.setmode(GPIO.BCM)  # Add setting for BCM mode
         except ImportError as e:
-            logging.warning(f"RPi.GPIO kütüphanesi bulunamadı: {e}")
+            logging.warning(f"RPi.GPIO library not found: {e}")
             hardware_available = False
 
-        # smbus2 kütüphanesini kontrol et
+        # Check smbus2 library
         try:
             import smbus2
         except ImportError as e:
-            logging.warning(f"smbus2 kütüphanesi bulunamadı: {e}")
+            logging.warning(f"smbus2 library not found: {e}")
             hardware_available = False
 
         if not hardware_available:
-            logging.warning("Donanım kütüphaneleri eksik. Simülasyon modu etkinleştiriliyor.")
+            logging.warning("Hardware libraries missing. Enabling simulation mode.")
 
         return hardware_available
 
     @property
     def gpio(self):
-        """GPIO pin konfigürasyonlarına erişim sağlar"""
+        """Provides access to GPIO pin configurations"""
         return self.GPIO_CONFIG
 
     @property
     def bmp280(self):
-        """BMP280 konfigürasyonlarına erişim sağlar"""
+        """Provides access to BMP280 configurations"""
         return self.BMP280_CONFIG
 
     def check_certificates(self):
-        """Sertifika dosyalarının varlığını kontrol eder"""
+        """Checks the existence of certificate files"""
         cert_files = [
             self.config["rootCAPath"],
             self.config["certificatePath"],
@@ -123,14 +123,14 @@ class Config:
 
         if missing_files:
             for f in missing_files:
-                logging.error(f"Sertifika dosyası bulunamadı: {f}")
+                logging.error(f"Certificate file not found: {f}")
             return False
         return True
 
     def get(self, key, default=None):
-        """Belirli bir konfigürasyon değerini getirir"""
+        """Returns a specific configuration value"""
         return self.config.get(key, default)
 
     def __getitem__(self, key):
-        """Dict-like erişim için"""
+        """For dict-like access"""
         return self.config[key]

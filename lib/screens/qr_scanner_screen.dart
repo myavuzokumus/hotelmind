@@ -18,7 +18,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? controller;
   bool _isProcessing = false;
-  String _message = "Lütfen QR Kodu Taratın";
+  String _message = "Please Scan QR Code";
   bool _isAuthorized = false;
   bool _hasError = false;
 
@@ -35,7 +35,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Üst bilgi alanı
+              // Header area
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -43,7 +43,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 child: Column(
                   children: [
                     const Text(
-                      'Oda Erişimi',
+                      'Room Access',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -58,7 +58,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Odaya erişim sağlamak için QR kodu taratın',
+                      'Scan the QR code to access the room',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[700],
@@ -72,11 +72,11 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Wrap(
-                  spacing: 24, // yatay boşluk
-                  runSpacing: 32, // dikey boşluk
+                  spacing: 24, // horizontal spacing
+                  runSpacing: 32, // vertical spacing
                   alignment: WrapAlignment.center,
                   children: [
-                    // QR Scanner bölümü
+                    // QR Scanner section
                     Container(
                       constraints: const BoxConstraints(maxWidth: 512),
                       width: 512,
@@ -87,7 +87,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             children: [
-                              // QR Tarama / İşleme / Sonuç bölümü
+                              // QR Scanning / Processing / Result section
                               Container(
                                 height: 480,
                                 decoration: BoxDecoration(
@@ -106,7 +106,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                                 ),
                               ),
 
-                              // Kamera kontrolleri
+                              // Camera controls
                               if (!_hasError &&
                                   !_isAuthorized &&
                                   !_isProcessing)
@@ -120,7 +120,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                       ),
                     ),
 
-                    // Alt bilgi alanı
+                    // Footer area
                     Container(
                       constraints: const BoxConstraints(maxWidth: 400),
                       width: 400,
@@ -129,7 +129,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                       child: Column(
                         children: [
                           const Text(
-                            'QR Kod Nasıl Çalışır?',
+                            'How Does QR Code Work?',
                             style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold
@@ -138,18 +138,18 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                           const SizedBox(height: 16),
                           _buildInfoItem(
                             icon: Icons.qr_code,
-                            title: 'QR Kodu Bul',
-                            description: 'Oda kapısındaki veya resepsiyon tarafından verilen QR kodu bulun',
+                            title: 'Find QR Code',
+                            description: 'Find the QR code on the room door or provided by the reception',
                           ),
                           _buildInfoItem(
                             icon: Icons.mobile_screen_share,
-                            title: 'QR Kodu Tarat',
-                            description: 'Kameranızı QR kodun üzerine tutarak tarama yapın',
+                            title: 'Scan QR Code',
+                            description: 'Hold your camera over the QR code to scan',
                           ),
                           _buildInfoItem(
                             icon: Icons.lock_open,
-                            title: 'Erişim Sağla',
-                            description: 'QR kod doğrulandıktan sonra oda kontrollerine erişim kazanacaksınız',
+                            title: 'Gain Access',
+                            description: 'After the QR code is verified, you will gain access to room controls',
                           ),
                         ],
                       ),
@@ -203,11 +203,11 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-// QR tarama görünümü
+// QR scanning view
   Widget _buildQRView() {
     return Stack(
       children: [
-        // Kamera görüntüsü
+        // Camera view
         OverflowBox(
           maxWidth: double.infinity,
           maxHeight: double.infinity,
@@ -231,7 +231,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           ),
         ),
 
-        // Durum mesajı - ekranın alt kısmında
+        // Status message - at the bottom of the screen
         Positioned(
           left: 0,
           right: 0,
@@ -272,7 +272,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-  // İşleme sırasındaki görünüm
+  // Processing view
   Widget _buildProcessingView() {
     return Center(
       child: Column(
@@ -290,7 +290,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-  // Yetkilendirme başarılı olduğunda görünüm
+  // Authorized view
   Widget _buildAuthorizedView() {
     return Center(
       child: Column(
@@ -320,7 +320,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-  // Hata durumunda görünüm
+  // Error view
   Widget _buildErrorView() {
     return Center(
       child: Column(
@@ -348,17 +348,17 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           const SizedBox(height: 28),
           ElevatedButton.icon(
             onPressed: () {
-              // Ana sayfaya yönlendirmek yerine tarayıcıyı sıfırlayalım
+              // Let's reset the scanner instead of redirecting to home page
               setState(() {
                 _isProcessing = false;
                 _isAuthorized = false;
                 _hasError = false;
-                _message = "Lütfen QR Kodu Taratın";
+                _message = "Please Scan QR Code";
               });
 
             },
             icon: const Icon(Icons.refresh),
-            label: const Text('Yeniden dene'),
+            label: const Text('Try again'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -370,7 +370,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-  // Kamera kontrol butonları
+  // Camera control buttons
   Widget _buildCameraControls() {
     return Container(
       decoration: BoxDecoration(
@@ -388,7 +388,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
               }
             },
             icon: const Icon(Icons.flip_camera_ios),
-            label: const Text('Kamera Değiştir'),
+            label: const Text('Switch Camera'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -416,18 +416,18 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       setState(() {
         _isProcessing = true;
         _hasError = false;
-        _message = "QR Kod İşleniyor...";
+        _message = "Processing QR Code...";
       });
     }
 
     try {
       final authService = ref.read(authServiceProvider);
 
-      // Geliştirici modu kontrolü
+      // Developer mode check
       final isDeveloperMode = ref.read(developerModeProvider);
       if (isDeveloperMode) {
-        // Geliştirici modunda QR doğrulaması atla
-        ref.read(debugLogProvider.notifier).log("Geliştirici modunda QR kod doğrulaması atlandı: $qrData");
+        // Skip QR verification in developer mode
+        ref.read(debugLogProvider.notifier).log("QR code verification skipped in developer mode: $qrData");
 
         Map<String, dynamic>? parsedData = authService.parseQrData(qrData);
         if (parsedData != null) {
@@ -436,21 +436,21 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           setState(() {
             _isProcessing = false;
             _hasError = true;
-            _message = "Geçersiz QR Kod formatı.";
+            _message = "Invalid QR Code format.";
           });
         }
       } else {
-        // Normal modda QR doğrulama
+        // Normal mode QR verification
         ResponseModel<Map<String, dynamic>> result = await authService.verifyQRCode(qrData);
 
         if (result.success) {
           _showSuccessAndNavigate(result.data!);
         } else {
-          // Hata mesajını göster
+          // Show error message
           setState(() {
             _isProcessing = false;
             _hasError = true;
-            _message = result.error ?? "Bilinmeyen bir hata oluştu.";
+            _message = result.error ?? "An unknown error occurred.";
           });
         }
       }
@@ -458,15 +458,15 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       String userFriendlyError;
 
       if (e is UnimplementedError) {
-        userFriendlyError = "Henüz tamamlanmamış bir özellik kullanılmaya çalışıldı";
+        userFriendlyError = "Attempted to use an incomplete feature";
       } else if (e.toString().contains("network")) {
-        userFriendlyError = "Ağ bağlantısı hatası. Lütfen internet bağlantınızı kontrol edin";
+        userFriendlyError = "Network connection error. Please check your internet connection";
       } else if (e.toString().contains("permission")) {
-        userFriendlyError = "Kamera erişim izni gerekiyor";
+        userFriendlyError = "Camera access permission is required";
       } else if (e.toString().contains("timeout")) {
-        userFriendlyError = "Sunucu yanıt vermiyor. Lütfen tekrar deneyin";
+        userFriendlyError = "Server is not responding. Please try again";
       } else {
-        userFriendlyError = "QR kod tarama hatası";
+        userFriendlyError = "QR code scanning error";
       }
 
       if (mounted) {
@@ -477,29 +477,29 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         });
       }
 
-      ref.read(debugLogProvider.notifier).log("QR işleme hatası: $userFriendlyError");
+      ref.read(debugLogProvider.notifier).log("QR processing error: $userFriendlyError");
     }
   }
 
-// Başarılı işlem için yardımcı metot
+// Helper method for successful operation
   void _showSuccessAndNavigate(Map<String, dynamic> parsedData) async {
     String roomId = parsedData['roomId'];
     String sessionId = parsedData['sessionId'];
 
-    // Önce yetkilendirildiğini göster
+    // First show that it's authorized
     if (mounted) {
       setState(() {
         _isProcessing = false;
         _isAuthorized = true;
-        _message = "Yetkilendirme Başarılı! Oda erişimi sağlandı.";
+        _message = "Authorization Successful! Room access granted.";
       });
     }
 
-    // 2 saniye bekleyip sonra yönetim paneline geçiş yap
+    // Wait 2 seconds and then switch to control panel
     await Future.delayed(const Duration(seconds: 2));
 
     if (mounted) {
-      // NavigationService ile durum güncelleme
+      // Update state with NavigationService
       ref.read(navigationServiceProvider).updateAuthState(
         isAuthenticated: true,
         roomId: roomId,
