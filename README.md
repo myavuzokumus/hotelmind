@@ -151,7 +151,7 @@ flutter run -d chrome
 ---
 
 ## 📜 Credits and Academic Context
-This project was developed by **Mustafa Yavuz OKUMUŞ** as a graduation capstone project at Istanbul Kültür University, Department of Mathematics and Computer Science, advised by Assoc. Prof. Dr. Alper Ülker. 
+This project was developed by **Mustafa Yavuz OKUMUŞ** as a graduation capstone project at Istanbul Kültür University, Department of Mathematics and Computer Science.
 
 The project evaluates and compares leading cloud providers (AWS, Azure, GCP) and cloud service models (IaaS, PaaS, SaaS) for IoT ecosystems, ultimately electing an AWS PaaS/SaaS hybrid model for its scalability, mature ecosystem, and development velocity.
 
