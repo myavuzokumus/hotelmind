@@ -118,6 +118,7 @@ def verify_signature(qr_data):
         payload = f"{qr_data['roomId']}:{qr_data['timestamp']}:{qr_data['expiry']}:{qr_data['sessionId']}"
 
         # QR üreticisiyle aynı formatta anahtar kullan
+        # TODO: Replace the fallback key with your own. Generate with: openssl rand -hex 32
         SECRET_KEY = os.environ.get('QR_SECRET_KEY', "a69836475cdbb13d9e3fb15d6d2a547ee11f0d6d52d7c1b43bc9b0e965502357")
         key = bytes.fromhex(SECRET_KEY)  # hexadecimal formatı kullan
 

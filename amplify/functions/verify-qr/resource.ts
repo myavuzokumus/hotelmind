@@ -18,6 +18,7 @@ export const verifyQrFunctionHandler = defineFunction(
       environment: {
         RATE_LIMIT_COUNT: "10",
         RATE_LIMIT_WINDOW: "60",
+        // TODO: Replace with your own secret key. Generate one with: openssl rand -hex 32
         QR_SECRET_KEY: "a69836475cdbb13d9e3fb15d6d2a547ee11f0d6d52d7c1b43bc9b0e965502357",
         QR_SESSIONS_TABLE: "QrSession-23zg6kw7jvc7vd6hacyznny2w4-NONE",
         QR_RATE_LIMIT_TABLE: "QrRateLimit-23zg6kw7jvc7vd6hacyznny2w4-NONE"
@@ -57,8 +58,10 @@ export const verifyQrFunctionHandler = defineFunction(
         'dynamodb:DeleteItem',
       ],
       resources: [
-        "arn:aws:dynamodb:eu-central-1:471112835770:table/QrRateLimit*",
-        "arn:aws:dynamodb:eu-central-1:471112835770:table/QrSession*"
+        // NOT: GitHub'da açık kaynak (public) olabilmesi ve başkalarının kendi AWS hesaplarına 
+        // deploy edebilmesi için Bölge (Region) ve AWS Hesap ID'si *:* olarak jenerik bırakılmıştır.
+        "arn:aws:dynamodb:*:*:table/QrRateLimit*",
+        "arn:aws:dynamodb:*:*:table/QrSession*"
       ]
     }));
 
