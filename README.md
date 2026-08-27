@@ -11,7 +11,7 @@
 ![DynamoDB](https://img.shields.io/badge/DynamoDB-4053D6?style=for-the-badge&logo=amazondynamodb&logoColor=white)
 ![GraphQL](https://img.shields.io/badge/GraphQL-E10098?style=for-the-badge&logo=graphql&logoColor=white)
 
-![Cloud IoT Concept](assets/figures/cloud_iot_concept.png)
+<video src="assets/demo.mp4" controls width="100%"></video>
 
 ## 📖 Overview
 HotelMind is a comprehensive, scalable smart room automation system leveraging Amazon Web Services (AWS) cloud infrastructure and Internet of Things (IoT) technologies. Originally developed as an academic capstone project, the system seamlessly connects physical sensors and actuators (via Raspberry Pi) to a powerful, serverless cloud backend and a modern Flutter-based web interface. 
@@ -90,7 +90,9 @@ The frontend is built using the Flutter framework, offering a seamless cross-pla
 ---
 
 ## 📂 Project Structure
+
 ```
+
 hotelmind/
 ├── amplify/              # AWS Amplify backend (Lambda functions, AppSync schema, auth)
 │   ├── data/             #   GraphQL schema & resolvers
@@ -107,6 +109,7 @@ hotelmind/
 │   ├── services/         #   AWS service integrations
 │   └── widgets/          #   Reusable UI components
 └── assets/               # Images, icons, sounds, documentation
+
 ```
 
 ---
@@ -125,32 +128,52 @@ npm install -g @aws-amplify/cli
 cd hotelmind
 amplify init
 amplify push
+
 ```
 
 ### IoT Device Setup (Raspberry Pi)
+
 1. Install Python dependencies:
-   ```bash
-   cd iot
-   pip install -r requirements.txt
-   ```
+```bash
+cd iot
+pip install -r requirements.txt
+
+```
+
+
 2. Place your AWS IoT Core certificates (`certificate.pem.crt`, `private.pem.key`, `AmazonRootCA1.pem`) inside the `iot/certs/` directory.
 3. Create `secrets.json` in the `iot/certs/` directory with your endpoint configuration.
 4. Run the main edge agent:
-   ```bash
-   python main.py --verbose
-   ```
-   *(Use `--mock` to run without real hardware attached).*
+```bash
+python main.py --verbose
+
+```
+
+
+*(Use `--mock` to run without real hardware attached).*
 
 ### Frontend Setup (Flutter)
+
 ```bash
 cd hotelmind
 flutter pub get
 flutter run -d chrome
+
 ```
 
 ---
 
-## 📜 Credits and Academic Context
+## 👥 Team & Contributions
+
+| Member | Role & Responsibilities |
+| :--- | :--- |
+| **Mustafa Yavuz OKUMUŞ** | **Software Architecture & Cloud Lead** — Full-Stack Software Development (Flutter Web App, Cloud Backend on AWS AppSync/DynamoDB/Lambda, IoT Core MQTT Integration & Python Edge Agent / Sensor Drivers) *(Original Codebase & Graduation Capstone)* |
+| **Cem Girgin** | **Hardware & Electronics** — Circuit & Custom PCB Design, Sensor & Actuator Wiring, Physical Prototyping & Enclosure Fabrication |
+
+---
+
+## 📜 Academic Context
+
 This project was developed by **Mustafa Yavuz OKUMUŞ** as a graduation capstone project at Istanbul Kültür University, Department of Mathematics and Computer Science.
 
 The project evaluates and compares leading cloud providers (AWS, Azure, GCP) and cloud service models (IaaS, PaaS, SaaS) for IoT ecosystems, ultimately electing an AWS PaaS/SaaS hybrid model for its scalability, mature ecosystem, and development velocity.
@@ -158,10 +181,14 @@ The project evaluates and compares leading cloud providers (AWS, Azure, GCP) and
 ---
 
 ### 📚 Additional Resources
+
 For more detailed information, including the comprehensive **Academic Article** and **Presentation** for this project, please visit:
 🔗 [https://sc-riber.com/projects/hotelmind](https://sc-riber.com/projects/hotelmind)
 
 ---
 
 ## 📄 License
-This project is licensed under the [MIT License](LICENSE).
+
+This project is licensed under the [MIT License](https://www.google.com/search?q=LICENSE).
+
+![Cloud IoT Concept](assets/figures/cloud_iot_concept.png)
