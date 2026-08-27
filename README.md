@@ -11,7 +11,7 @@
 ![DynamoDB](https://img.shields.io/badge/DynamoDB-4053D6?style=for-the-badge&logo=amazondynamodb&logoColor=white)
 ![GraphQL](https://img.shields.io/badge/GraphQL-E10098?style=for-the-badge&logo=graphql&logoColor=white)
 
-<video src="assets/demo.mp4" controls width="100%"></video>
+https://github.com/user-attachments/assets/af0ca069-10da-4d48-999c-76e172448867
 
 ## 📖 Overview
 HotelMind is a comprehensive, scalable smart room automation system leveraging Amazon Web Services (AWS) cloud infrastructure and Internet of Things (IoT) technologies. Originally developed as an academic capstone project, the system seamlessly connects physical sensors and actuators (via Raspberry Pi) to a powerful, serverless cloud backend and a modern Flutter-based web interface. 
