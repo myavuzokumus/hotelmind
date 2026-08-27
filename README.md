@@ -168,7 +168,7 @@ flutter run -d chrome
 | Member | Role & Responsibilities |
 | :--- | :--- |
 | **Mustafa Yavuz OKUMUŞ** | **Software Architecture & Cloud Lead** — Full-Stack Software Development (Flutter Web App, Cloud Backend on AWS AppSync/DynamoDB/Lambda, IoT Core MQTT Integration & Python Edge Agent / Sensor Drivers) *(Original Codebase & Graduation Capstone)* |
-| **Cem Girgin** | **Hardware & Electronics** — Circuit & Custom PCB Design, Sensor & Actuator Wiring, Physical Prototyping & Enclosure Fabrication |
+| **[Cem Girgin](http://github.com/cemmgrgn)** | **Hardware & Electronics** — Circuit & Custom PCB Design, Sensor & Actuator Wiring, Physical Prototyping & Enclosure Fabrication |
 
 ---
 
